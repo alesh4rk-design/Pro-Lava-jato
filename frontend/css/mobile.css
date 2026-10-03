@@ -465,3 +465,74 @@
   text-align: right;
   overflow-wrap: anywhere;
 }
+
+/* Composição de custo do serviço */
+.cost-rows {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.cost-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cost-row select.input {
+  padding-right: var(--space-2);
+}
+
+.cost-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.cost-summary {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.movement-meta {
+  display: block;
+}
+
+.stock-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.stock-alert span {
+  flex: 1;
+}
+
+.cost-row .qty-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1);
+}
+
+.cost-row .qty-row .input,
+.cost-row > .input:nth-child(2) {
+  padding: 0 var(--space-2);
+  text-align: right;
+}
+
+.cost-row .qty-unit {
+  min-width: 24px;
+}
+
+.cost-row .btn-icon {
+  width: 40px;
+}

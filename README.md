@@ -26,7 +26,7 @@ Um novo lava-jato usa **"Solicitar acesso"** na tela de login, informando o pró
 - [x] **Etapa 1:** estrutura, design mobile, PWA, login, painel do administrador do sistema, dashboard visual
 - [x] **Etapa 2:** D1, Worker, API, autenticação, sessões, RBAC, usuários e painel do administrador do sistema
 - [x] **Etapa 3:** receitas, despesas, categorias, caixa e dashboard com dados reais
-- [ ] Etapa 4: produtos, estoque, serviços, custo por serviço
+- [x] **Etapa 4:** produtos, estoque, custo médio, serviços e custo estimado por serviço
 - [ ] Etapa 5: dashboard real, relatórios, gráficos, ponto de equilíbrio
 - [ ] Etapa 6: auditoria, segurança, performance, testes
 - [ ] Etapa 7: deploy final e testes em celular
@@ -70,7 +70,12 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET | `/api/dashboard?period=` | lava-jato |
 | GET | `/api/categories?kind=` | lava-jato (ADMIN vê inativas) |
 | POST / PUT | `/api/categories` · `/:id` | ADMIN |
-| GET | `/api/services` | lava-jato |
+| GET | `/api/services` · `/:id` | lava-jato (custos e margens só ADMIN) |
+| POST / PUT | `/api/services` · `/:id` | ADMIN |
+| PUT | `/api/services/:id/costs` | ADMIN (substitui a composição de custo) |
+| GET | `/api/products?low_stock=1` · `/:id` | lava-jato (custo só ADMIN) |
+| POST / PUT | `/api/products` · `/:id` | ADMIN |
+| POST | `/api/products/:id/movements` | compra e consumo: ADMIN e OPERADOR; ajuste: ADMIN |
 | GET / POST | `/api/revenues` · `/api/expenses` | lava-jato (lançar: ADMIN e OPERADOR) |
 | GET | `/api/revenues/:id` · `/api/expenses/:id` | lava-jato |
 | PUT / DELETE | `/api/revenues/:id` · `/api/expenses/:id` | ADMIN (DELETE = cancelar) |
@@ -88,6 +93,13 @@ Períodos: `period=today|7d|month|last_month|year` ou `period=custom&start=AAAA-
 - Serviços = receitas ligadas a um serviço. Ticket médio = faturamento ÷ número de receitas.
 - Lançamentos não são apagados: cancelar guarda quem, quando e o motivo, e o valor sai dos totais.
 - Datas de lançamento não podem ser futuras; "hoje" segue o fuso `TIMEZONE` (America/Sao_Paulo).
+
+**Estoque e custos**
+- Quantidades na menor unidade (ml, g, un); custo médio em micro-reais por unidade (R$ 17,00/L = 17.000 µR/ml).
+- Compra recalcula o custo médio ponderado e pode lançar a despesa (custo variável) no caixa, ligada à movimentação.
+- Consumo e ajuste usam o custo médio atual; o estoque nunca fica negativo (baixa condicional na transação).
+- Custo do serviço = consumo de produtos × custo médio + valores rateados. É uma **estimativa**;
+  a receita guarda o custo estimado do momento da venda.
 As permissões de cada rota ficam numa única tabela em `worker/src/index.js`.
 
 ### Primeiro deploy da API

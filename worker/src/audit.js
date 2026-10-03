@@ -29,15 +29,17 @@ export const LAST_INSERT_ID = Object.freeze({ lastInsert: true });
  * @param {number|null} entry.tenantId
  * @param {{type: 'USER'|'SYSTEM_ADMIN'|'ANONYMOUS', id?: number}} entry.actor
  * @param {number|null|typeof LAST_INSERT_ID} entry.entityId
+ * @param {boolean} [entry.onlyIfChanged] grava só se a instrução anterior do batch alterou alguma linha
  */
-export async function auditStatement(env, { tenantId = null, actor, action, entity, entityId = null, details = {}, ip }) {
+export async function auditStatement(env, { tenantId = null, actor, action, entity, entityId = null, details = {}, ip, onlyIfChanged = false }) {
   const fromLastInsert = entityId === LAST_INSERT_ID;
   const binds = [tenantId, actor.type, actor.id ?? null, action, entity];
   if (!fromLastInsert) binds.push(entityId);
   binds.push(JSON.stringify(scrub(details)), await hashIp(env, ip));
   return env.DB.prepare(
     `INSERT INTO audit_logs (tenant_id, actor_type, actor_id, action, entity, entity_id, details, ip_hash)
-     VALUES (?, ?, ?, ?, ?, ${fromLastInsert ? 'last_insert_rowid()' : '?'}, ?, ?)`,
+     SELECT ?, ?, ?, ?, ?, ${fromLastInsert ? 'last_insert_rowid()' : '?'}, ?, ?
+     ${onlyIfChanged ? 'WHERE changes() > 0' : ''}`,
   ).bind(...binds);
 }
 

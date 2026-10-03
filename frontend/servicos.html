@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev http://127.0.0.1:8787; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0a6e7d">
+  <title>Serviços · Lava-Jato Gestão</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/mobile.css">
+  <script type="module" src="js/servicos.js"></script>
+</head>
+<body data-page="mais" data-scope="tenant">
+  <main class="page">
+    <div class="page-title">
+      <h1>Serviços</h1>
+      <button class="btn btn-primary" type="button" id="new-service" data-requires-role="ADMIN" hidden>
+        <svg class="icon icon-sm" aria-hidden="true"><use href="assets/icons.svg#plus"></use></svg>
+        Novo
+      </button>
+    </div>
+    <p class="muted" data-requires-role="ADMIN" hidden>Custos e margens são <strong>estimativas</strong>: usam o custo médio atual dos produtos e os valores rateados que você informar.</p>
+    <div class="section" id="service-list" aria-live="polite"></div>
+  </main>
+</body>
+</html>

@@ -96,3 +96,44 @@ export function isValidEmail(value) {
 export function isStrongPassword(value) {
   return typeof value === 'string' && value.length >= 8 && value.length <= 128 && /[A-Za-z]/.test(value) && /\d/.test(value);
 }
+
+/* Quantidades de produto: guardadas na menor unidade (ml, g, un), exibidas de forma legível. */
+
+export const UNITS = {
+  ML: { small: 'ml', big: 'L', factor: 1000, label: 'Líquido (L / ml)' },
+  G: { small: 'g', big: 'kg', factor: 1000, label: 'Peso (kg / g)' },
+  UN: { small: 'un', big: null, factor: 1, label: 'Unidade' },
+};
+
+const qtyFormatter = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 });
+
+/** 20000 ML -> "20 L"; 500 ML -> "500 ml"; 2500 G -> "2,5 kg"; 12 UN -> "12 un". */
+export function formatQty(qty, unit) {
+  const info = UNITS[unit];
+  if (!info || !Number.isSafeInteger(qty)) return '—';
+  if (info.big && Math.abs(qty) >= info.factor) return `${qtyFormatter.format(qty / info.factor)} ${info.big}`;
+  return `${qtyFormatter.format(qty)} ${info.small}`;
+}
+
+/**
+ * Converte o texto digitado para a menor unidade. multiplier = 1000 quando o usuário escolheu L/kg.
+ * Aceita vírgula ou ponto e até 3 casas decimais; o resultado precisa ser inteiro e positivo.
+ */
+export function parseQty(input, multiplier = 1, { allowZero = false } = {}) {
+  if (typeof input !== 'string') return null;
+  const text = input.trim().replace(',', '.');
+  if (!/^\d{1,9}(\.\d{1,3})?$/.test(text)) return null;
+  const [intPart, decPart = ''] = text.split('.');
+  const milli = Number(intPart) * 1000 + Number(decPart.padEnd(3, '0'));
+  if ((milli * multiplier) % 1000 !== 0) return null; // ex.: 0,5 ml não existe
+  const qty = (milli * multiplier) / 1000;
+  if (!Number.isSafeInteger(qty) || qty > 1_000_000_000 || qty < (allowZero ? 0 : 1)) return null;
+  return qty;
+}
+
+/** Custo médio (micro-reais por menor unidade) -> "R$ 17,00/L". */
+export function formatUnitCost(micro, unit) {
+  const info = UNITS[unit];
+  if (!info || !Number.isSafeInteger(micro)) return '—';
+  return `${formatCents(Math.round((micro * info.factor) / 10_000))}/${info.big ?? 'un'}`;
+}

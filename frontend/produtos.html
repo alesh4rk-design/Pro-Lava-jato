@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev http://127.0.0.1:8787; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0a6e7d">
+  <title>Produtos · Lava-Jato Gestão</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/mobile.css">
+  <script type="module" src="js/produtos.js"></script>
+</head>
+<body data-page="mais" data-scope="tenant">
+  <main class="page">
+    <div class="page-title">
+      <h1>Produtos</h1>
+      <button class="btn btn-primary" type="button" id="new-product" data-requires-role="ADMIN" hidden>
+        <svg class="icon icon-sm" aria-hidden="true"><use href="assets/icons.svg#plus"></use></svg>
+        Novo
+      </button>
+    </div>
+    <div class="chips" role="group" aria-label="Filtro" id="filter-chips">
+      <button class="chip" type="button" data-filter="" aria-pressed="true">Todos</button>
+      <button class="chip" type="button" data-filter="low" aria-pressed="false">Estoque baixo</button>
+    </div>
+    <div class="section" id="product-list" aria-live="polite"></div>
+  </main>
+</body>
+</html>

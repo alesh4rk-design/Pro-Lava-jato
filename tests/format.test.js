@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  formatCents, parseMoneyToCents, centsToInput, formatBasisPoints, isValidISODate, formatDate, formatDateTime, formatPhone, todayISO, isValidEmail, MAX_CENTS,
+  formatCents, parseMoneyToCents, centsToInput, formatQty, parseQty, formatUnitCost, formatBasisPoints, isValidISODate, formatDate, formatDateTime, formatPhone, todayISO, isValidEmail, MAX_CENTS,
 } from '../frontend/js/format.js';
 
 test('formatCents usa padrão brasileiro e aritmética inteira', () => {
@@ -105,4 +105,33 @@ test('isValidEmail', () => {
   assert.equal(isValidEmail("x'--@x.com"), false);
   assert.equal(isValidEmail('joao.silva+caixa@sub.dominio.com.br'), true);
   assert.equal(isValidEmail(`${'a'.repeat(250)}@x.com`), false);
+});
+
+test('formatQty mostra L/kg acima de 1000', () => {
+  assert.equal(formatQty(20000, 'ML'), '20 L');
+  assert.equal(formatQty(2500, 'ML'), '2,5 L');
+  assert.equal(formatQty(500, 'ML'), '500 ml');
+  assert.equal(formatQty(-1000, 'ML'), '-1 L');
+  assert.equal(formatQty(1250, 'G'), '1,25 kg');
+  assert.equal(formatQty(12, 'UN'), '12 un');
+  assert.equal(formatQty(1.5, 'ML'), '—');
+});
+
+test('parseQty converte para a menor unidade', () => {
+  assert.equal(parseQty('5', 1000), 5000);
+  assert.equal(parseQty('2,5', 1000), 2500);
+  assert.equal(parseQty('0.125', 1000), 125);
+  assert.equal(parseQty('100', 1), 100);
+  assert.equal(parseQty('0,5', 1), null); // meio ml não existe
+  assert.equal(parseQty('0', 1), null);
+  assert.equal(parseQty('0', 1, { allowZero: true }), 0);
+  for (const bad of ['', '-5', 'abc', '1,2345', '1e3', '2000000', '1.000.000']) {
+    assert.equal(parseQty(bad, 1000), null, bad);
+  }
+});
+
+test('formatUnitCost (R$ 85 por 5 L = R$ 17/L)', () => {
+  assert.equal(formatUnitCost(17000, 'ML'), 'R$\u00a017,00/L');
+  assert.equal(formatUnitCost(25000, 'G'), 'R$\u00a025,00/kg');
+  assert.equal(formatUnitCost(1_500_000, 'UN'), 'R$\u00a01,50/un');
 });

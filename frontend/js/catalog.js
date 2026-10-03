@@ -15,4 +15,5 @@ function cached(key, path) {
 
 export const getServices = () => cached('services', '/services');
 export const getCategories = (kind) => cached(`categories:${kind}`, `/categories?kind=${encodeURIComponent(kind)}`);
+export const getProducts = () => cached('products', '/products');
 export const invalidateCatalog = () => cache.clear();

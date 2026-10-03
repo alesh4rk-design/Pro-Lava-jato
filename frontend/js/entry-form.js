@@ -2,7 +2,7 @@
 // descrição e observação, com validação e montagem do corpo da requisição.
 
 import { config } from './config.js';
-import { parseMoneyToCents, centsToInput, isValidISODate, todayISO } from './format.js';
+import { parseMoneyToCents, centsToInput, isValidISODate, todayISO, parseQty, UNITS } from './format.js';
 import { el, field, chipGroup, setFieldError } from './ui.js';
 
 export const PAYMENT_LABELS = { PIX: 'PIX', DINHEIRO: 'Dinheiro', DEBITO: 'Débito', CREDITO: 'Crédito', OUTRO: 'Outro' };
@@ -95,4 +95,36 @@ export function commonFields(kind, entry = null) {
 /** Corpo de edição: só os campos que mudaram. */
 export function diff(entry, body) {
   return Object.fromEntries(Object.entries(body).filter(([key, value]) => entry[key] !== value));
+}
+
+/**
+ * Campo de quantidade com escolha da unidade de digitação (L/ml, kg/g) para produtos ML e G.
+ * read() devolve a quantidade na menor unidade, ou null (mostrando o erro).
+ */
+export function qtyField({ id, label, unit, hint, allowZero = false, initialBig = true }) {
+  const info = UNITS[unit];
+  const input = el('input', { class: 'input', id, type: 'text', inputmode: 'decimal', autocomplete: 'off', maxlength: 12 });
+  const multiplier = info.big
+    ? chipGroup({
+      label: 'Unidade',
+      options: [{ value: info.factor, label: info.big }, { value: 1, label: info.small }],
+      value: initialBig ? info.factor : 1,
+    })
+    : null;
+  const element = el('div', { class: 'field' },
+    el('label', { for: id }, label),
+    el('div', { class: 'qty-row' }, input, multiplier ? multiplier.element : el('span', { class: 'qty-unit' }, info.small)),
+    hint ? el('span', { class: 'hint' }, hint) : null,
+    el('span', { class: 'field-error', id: `${id}-error` }),
+  );
+  return {
+    element,
+    input,
+    read() {
+      const qty = parseQty(input.value, multiplier ? multiplier.value : 1, { allowZero });
+      setFieldError(input, qty === null ? 'Quantidade inválida.' : null);
+      if (qty === null) input.focus();
+      return qty;
+    },
+  };
 }

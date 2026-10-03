@@ -3,7 +3,7 @@
 import { session } from './app.js';
 import { api } from './api.js';
 import { formatCents, formatBasisPoints, formatInteger, formatDate } from './format.js';
-import { el, stateView } from './ui.js';
+import { el, icon, stateView } from './ui.js';
 import { periodPicker } from './periods.js';
 
 const content = document.getElementById('dash-content');
@@ -96,8 +96,24 @@ async function load(query) {
   }
 }
 
+/** Alerta discreto quando há produtos abaixo do estoque mínimo. */
+async function loadStockAlert() {
+  try {
+    const { items } = await api.get('/products?low_stock=1');
+    const alert = document.getElementById('stock-alert');
+    if (!items.length) return;
+    alert.replaceChildren(icon('alert', 'icon icon-sm'),
+      el('span', {}, items.length === 1 ? `${items[0].name} está com estoque baixo` : `${items.length} produtos com estoque baixo`),
+      icon('chevron-right', 'icon icon-sm'));
+    alert.hidden = false;
+  } catch {
+    // o alerta é complementar: falha aqui não atrapalha o dashboard
+  }
+}
+
 function init() {
   if (!session) return;
+  loadStockAlert();
   periodPicker({
     container: document.getElementById('period-chips'),
     storageKey: 'lj.dashboard.period',

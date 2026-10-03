@@ -7,6 +7,7 @@ import * as users from './users.js';
 import * as system from './system.js';
 import * as categories from './categories.js';
 import * as services from './services.js';
+import * as products from './products.js';
 import * as revenues from './revenues.js';
 import * as expenses from './expenses.js';
 import * as cash from './cash.js';
@@ -42,6 +43,17 @@ const ROUTES = [
   ['PUT', '/api/categories/:id', TENANT, [ADMIN], categories.updateCategory],
 
   ['GET', '/api/services', TENANT, [], services.listServices],
+  ['POST', '/api/services', TENANT, [ADMIN], services.createService],
+  ['GET', '/api/services/:id', TENANT, [], services.getService],
+  ['PUT', '/api/services/:id', TENANT, [ADMIN], services.updateService],
+  ['PUT', '/api/services/:id/costs', TENANT, [ADMIN], services.replaceServiceCosts],
+
+  ['GET', '/api/products', TENANT, [], products.listProducts],
+  ['POST', '/api/products', TENANT, [ADMIN], products.createProduct],
+  ['GET', '/api/products/:id', TENANT, [], products.getProduct],
+  ['PUT', '/api/products/:id', TENANT, [ADMIN], products.updateProduct],
+  // Compra e consumo: ADMIN e OPERADOR; ajuste (AJUSTE) é conferido como só ADMIN no handler.
+  ['POST', '/api/products/:id/movements', TENANT, [ADMIN, OPERADOR], products.createMovement],
 
   ['GET', '/api/revenues', TENANT, [], revenues.listRevenues],
   ['POST', '/api/revenues', TENANT, [ADMIN, OPERADOR], revenues.createRevenue],
