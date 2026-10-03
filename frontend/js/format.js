@@ -55,6 +55,24 @@ export function formatDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
+/** Carimbo ISO UTC ("2026-10-03T14:05:00.000Z") -> "03/10/2026 11:05" no fuso informado. */
+export function formatDateTime(timestamp, timeZone, { time = true } = {}) {
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : null;
+  if (!date || Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone, day: '2-digit', month: '2-digit', year: 'numeric', ...(time ? { hour: '2-digit', minute: '2-digit' } : {}),
+  }).format(date).replace(',', '');
+}
+
+/** "11988887777" -> "(11) 98888-7777" */
+export function formatPhone(digits) {
+  if (typeof digits !== 'string' || !/^\d{10,13}$/.test(digits)) return digits || '';
+  const local = digits.length > 11 ? digits.slice(-11) : digits;
+  const ddd = local.slice(0, 2);
+  const rest = local.slice(2);
+  return `(${ddd}) ${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}`;
+}
+
 /** Data de hoje (YYYY-MM-DD) no fuso informado, independente do fuso do aparelho. */
 export function todayISO(timeZone, now = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
@@ -63,4 +81,9 @@ export function todayISO(timeZone, now = new Date()) {
 export function isValidEmail(value) {
   return typeof value === 'string' && value.length <= 254
     && /^[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(value);
+}
+
+/** Mesma regra do servidor: 8 a 128 caracteres, com letras e números. */
+export function isStrongPassword(value) {
+  return typeof value === 'string' && value.length >= 8 && value.length <= 128 && /[A-Za-z]/.test(value) && /\d/.test(value);
 }

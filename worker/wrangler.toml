@@ -1,0 +1,21 @@
+# Configuração do Worker. NÃO coloque segredos aqui: use `wrangler secret put NOME`.
+name = "lava-jato-api"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lava-jato-db"
+# Substitua pelo ID exibido em `npx wrangler d1 create lava-jato-db` (não é segredo).
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[vars]
+# Origens que podem chamar a API (sem barra final e sem caminho), separadas por vírgula.
+ALLOWED_ORIGINS = "https://alesh4rk-design.github.io"
+
+# Segredo exigido em produção (definir com `npx wrangler secret put IP_HASH_SALT`):
+#   IP_HASH_SALT  texto aleatório longo, usado para guardar IPs apenas como hash na auditoria

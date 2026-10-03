@@ -1,0 +1,3 @@
+# Copie para .dev.vars (ignorado pelo Git) para desenvolvimento local.
+ALLOWED_ORIGINS=http://localhost:5173
+IP_HASH_SALT=troque-por-um-texto-aleatorio

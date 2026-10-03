@@ -5,7 +5,9 @@
 import { config } from './config.js';
 import { getSession, homeFor, SCOPE } from './session.js';
 import { logout } from './auth.js';
-import { el, icon, openModal } from './ui.js';
+import { api } from './api.js';
+import { isStrongPassword } from './format.js';
+import { el, icon, field, openModal, toast, setBusy, validateFields } from './ui.js';
 import { registerServiceWorker } from './pwa.js';
 
 const NAV = [
@@ -52,13 +54,54 @@ function renderHeader(session) {
 }
 
 function openAccount(session) {
+  const actions = [{ label: 'Sair', variant: 'btn-danger', onClick: () => logout() }];
+  if (session.scope === SCOPE.TENANT) {
+    actions.unshift({ label: 'Trocar senha', variant: 'btn-outline', onClick: (close) => { close(); openChangePassword(); } });
+  }
   openModal({
     title: 'Minha conta',
     content: el('div', { class: 'list' },
       el('div', { class: 'list-row' }, el('span', { class: 'muted' }, 'Nome'), el('strong', {}, session.user.name)),
       el('div', { class: 'list-row' }, el('span', { class: 'muted' }, 'Perfil'), el('strong', {}, ROLE_LABEL[session.user.role] ?? '—')),
     ),
-    actions: [{ label: 'Sair', variant: 'btn-danger', onClick: () => logout() }],
+    actions,
+  });
+}
+
+function openChangePassword() {
+  const form = el('form', { class: 'form', novalidate: true },
+    field({ id: 'p-current', label: 'Senha atual', type: 'password', autocomplete: 'current-password', maxlength: 128 }),
+    field({ id: 'p-new', label: 'Nova senha', type: 'password', autocomplete: 'new-password', maxlength: 128, hint: 'Mínimo de 8 caracteres, com letras e números.' }),
+    field({ id: 'p-confirm', label: 'Repita a nova senha', type: 'password', autocomplete: 'new-password', maxlength: 128 }),
+  );
+  openModal({
+    title: 'Trocar senha',
+    content: form,
+    actions: [
+      { label: 'Cancelar', variant: 'btn-outline' },
+      {
+        label: 'Salvar',
+        variant: 'btn-primary',
+        onClick: async (close, button) => {
+          const [current, next, confirm] = ['p-current', 'p-new', 'p-confirm'].map((id) => form.querySelector(`#${id}`));
+          const valid = validateFields([
+            [current, (v) => (v ? null : 'Informe a senha atual.')],
+            [next, (v) => (isStrongPassword(v) ? null : 'Mínimo de 8 caracteres, com letras e números.')],
+            [confirm, (v) => (v === next.value ? null : 'As senhas não conferem.')],
+          ]);
+          if (!valid) return;
+          setBusy(button, true);
+          try {
+            await api.post('/auth/password', { current_password: current.value, new_password: next.value });
+            close();
+            toast('Senha alterada. Outros aparelhos foram desconectados.', { type: 'success' });
+          } catch (error) {
+            toast(error.message, { type: 'error' });
+            setBusy(button, false);
+          }
+        },
+      },
+    ],
   });
 }
 

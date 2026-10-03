@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  formatCents, parseMoneyToCents, formatBasisPoints, isValidISODate, formatDate, todayISO, isValidEmail, MAX_CENTS,
+  formatCents, parseMoneyToCents, formatBasisPoints, isValidISODate, formatDate, formatDateTime, formatPhone, todayISO, isValidEmail, MAX_CENTS,
 } from '../frontend/js/format.js';
 
 test('formatCents usa padrão brasileiro e aritmética inteira', () => {
@@ -70,6 +70,20 @@ test('formatDate e todayISO', () => {
   // 02:30 UTC do dia 4 ainda é dia 3 em São Paulo (UTC-3).
   assert.equal(todayISO('America/Sao_Paulo', new Date('2026-10-04T02:30:00Z')), '2026-10-03');
   assert.equal(todayISO('America/Sao_Paulo', new Date('2026-10-04T03:30:00Z')), '2026-10-04');
+});
+
+test('formatDateTime converte UTC para o fuso do lava-jato', () => {
+  assert.equal(formatDateTime('2026-10-03T14:05:00.000Z', 'America/Sao_Paulo'), '03/10/2026 11:05');
+  assert.equal(formatDateTime('2026-10-04T02:30:00.000Z', 'America/Sao_Paulo', { time: false }), '03/10/2026');
+  assert.equal(formatDateTime('lixo', 'America/Sao_Paulo'), '—');
+  assert.equal(formatDateTime(null, 'America/Sao_Paulo'), '—');
+});
+
+test('formatPhone', () => {
+  assert.equal(formatPhone('11988887777'), '(11) 98888-7777');
+  assert.equal(formatPhone('1133334444'), '(11) 3333-4444');
+  assert.equal(formatPhone('5511988887777'), '(11) 98888-7777');
+  assert.equal(formatPhone(''), '');
 });
 
 test('isValidEmail', () => {

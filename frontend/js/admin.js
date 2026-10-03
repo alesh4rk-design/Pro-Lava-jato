@@ -2,7 +2,8 @@
 
 import { session } from './app.js';
 import { api } from './api.js';
-import { formatDate } from './format.js';
+import { config } from './config.js';
+import { formatDateTime, formatPhone } from './format.js';
 import { el, icon, toast, confirmDialog, stateView, setBusy } from './ui.js';
 
 const STATUS = {
@@ -63,10 +64,10 @@ function tenantCard(tenant) {
       el('span', { class: `badge ${status.badge}` }, status.label),
     ),
     el('div', { class: 'tenant-meta' },
-      el('span', {}, tenant.owner_name),
-      el('span', {}, tenant.email),
-      tenant.phone ? el('span', {}, tenant.phone) : null,
-      el('span', {}, `Cadastro em ${formatDate(tenant.created_at)}`),
+      tenant.owner_name ? el('span', {}, tenant.owner_name) : null,
+      tenant.email ? el('span', {}, tenant.email) : null,
+      tenant.phone ? el('span', {}, formatPhone(tenant.phone)) : null,
+      el('span', {}, `Cadastro em ${formatDateTime(tenant.created_at, config.TIMEZONE, { time: false })}`),
     ),
     actions.length ? el('div', { class: 'tenant-actions' }, actions) : null,
   );
@@ -75,7 +76,7 @@ function tenantCard(tenant) {
 function render() {
   const term = search.value.trim().toLowerCase();
   const visible = term
-    ? items.filter((t) => `${t.business_name} ${t.owner_name} ${t.email}`.toLowerCase().includes(term))
+    ? items.filter((t) => `${t.business_name} ${t.owner_name ?? ''} ${t.email ?? ''}`.toLowerCase().includes(term))
     : items;
 
   if (!visible.length) {

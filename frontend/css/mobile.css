@@ -346,3 +346,20 @@
     box-shadow: var(--shadow-lg);
   }
 }
+
+/* Cartão de usuário clicável */
+.user-card {
+  width: 100%;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.user-card .tenant-actions {
+  align-items: center;
+}
+
+.user-card .chevron {
+  margin-left: auto;
+  color: var(--text-muted);
+}

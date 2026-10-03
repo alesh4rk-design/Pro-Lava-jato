@@ -1,7 +1,7 @@
 // Service worker: guarda só os arquivos do app. Respostas da API NUNCA são armazenadas.
 // Ao publicar uma nova versão, incremente VERSION.
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = `lj-shell-${VERSION}`;
 
 const SHELL = [
@@ -14,6 +14,7 @@ const SHELL = [
   'analise.html',
   'mais.html',
   'admin.html',
+  'usuarios.html',
   'manifest.json',
   'css/global.css',
   'css/components.css',
@@ -30,6 +31,7 @@ const SHELL = [
   'js/login.js',
   'js/dashboard.js',
   'js/admin.js',
+  'js/usuarios.js',
   'assets/icons.svg',
   'assets/icons/icon-192.png',
   'assets/icons/apple-touch-icon.png',

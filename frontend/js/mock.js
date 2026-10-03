@@ -11,10 +11,16 @@ const DAY_MS = 86_400_000;
 const FIXED_EXPENSES_MONTH_CENTS = 315_000;
 
 const tenants = [
-  { id: 1, business_name: 'Lava-Jato Demonstração', owner_name: 'Responsável Demo', email: 'demo@exemplo.com', phone: '(11) 90000-0001', status: 'ATIVO', created_at: '2026-08-12' },
-  { id: 2, business_name: 'Brilho Car Wash', owner_name: 'Carlos Souza', email: 'carlos@exemplo.com', phone: '(11) 90000-0002', status: 'PENDENTE', created_at: '2026-10-01' },
-  { id: 3, business_name: 'Auto Spa Centro', owner_name: 'Fernanda Lima', email: 'fernanda@exemplo.com', phone: '', status: 'PENDENTE', created_at: '2026-10-02' },
-  { id: 4, business_name: 'Lavagem Express', owner_name: 'Rafael Dias', email: 'rafael@exemplo.com', phone: '(21) 90000-0004', status: 'BLOQUEADO', created_at: '2026-06-20' },
+  { id: 1, business_name: 'Lava-Jato Demonstração', owner_name: 'Responsável Demo', email: 'demo@exemplo.com', phone: '11900000001', status: 'ATIVO', created_at: '2026-08-12T13:00:00.000Z' },
+  { id: 2, business_name: 'Brilho Car Wash', owner_name: 'Carlos Souza', email: 'carlos@exemplo.com', phone: '11900000002', status: 'PENDENTE', created_at: '2026-10-01T15:20:00.000Z' },
+  { id: 3, business_name: 'Auto Spa Centro', owner_name: 'Fernanda Lima', email: 'fernanda@exemplo.com', phone: '', status: 'PENDENTE', created_at: '2026-10-02T18:45:00.000Z' },
+  { id: 4, business_name: 'Lavagem Express', owner_name: 'Rafael Dias', email: 'rafael@exemplo.com', phone: '21900000004', status: 'BLOQUEADO', created_at: '2026-06-20T12:00:00.000Z' },
+];
+
+const users = [
+  { id: 1, name: 'Responsável Demo', email: 'demo@exemplo.com', role: 'ADMIN', active: true, last_login_at: new Date().toISOString(), created_at: '2026-08-12T13:00:00.000Z' },
+  { id: 2, name: 'Operador Demo', email: 'operador@exemplo.com', role: 'OPERADOR', active: true, last_login_at: '2026-10-02T21:10:00.000Z', created_at: '2026-08-15T12:00:00.000Z' },
+  { id: 3, name: 'Ex-funcionário', email: 'antigo@exemplo.com', role: 'OPERADOR', active: false, last_login_at: null, created_at: '2026-08-20T12:00:00.000Z' },
 ];
 
 const ok = (data, status = 200) => ({ status, payload: { success: true, data } });
@@ -35,6 +41,12 @@ export async function handleMock(method, fullPath, body, session) {
 
   const isSystem = session.user.role === 'SUPER_ADMIN';
   if (method === 'GET' && path === '/dashboard' && !isSystem) return mockDashboard(params);
+  if (method === 'GET' && path === '/auth/me' && !isSystem) return ok({ user: session.user, tenant: session.tenant });
+  if (method === 'POST' && path === '/auth/password' && !isSystem) return mockChangePassword(body);
+  if (path.startsWith('/users') && !isSystem) {
+    if (session.user.role !== 'ADMIN') return fail(403, 'FORBIDDEN', 'Você não tem permissão para esta ação.');
+    return mockUsers(method, path, body, session);
+  }
   if (path.startsWith('/system/')) {
     if (!isSystem) return fail(403, 'FORBIDDEN', 'Você não tem permissão para esta ação.');
     return mockSystem(method, path, params);
@@ -56,9 +68,10 @@ function mockLogin(body, system) {
   if (system) {
     return ok({ token, user: { id: 1, name: 'Administrador do Sistema', role: 'SUPER_ADMIN' } });
   }
+  const demoUser = users[prefix === 'operador' ? 1 : 0];
   return ok({
     token,
-    user: { id: 1, name: prefix === 'operador' ? 'Operador Demo' : 'Responsável Demo', role: prefix === 'operador' ? 'OPERADOR' : 'ADMIN' },
+    user: { id: demoUser.id, name: demoUser.name, role: demoUser.role },
     tenant: { id: 1, name: 'Lava-Jato Demonstração' },
   });
 }
@@ -73,9 +86,9 @@ function mockAccessRequest(body) {
     business_name: body.business_name,
     owner_name: body.owner_name,
     email: body.email,
-    phone: body.phone ?? '',
+    phone: String(body.phone ?? '').replace(/\D/g, ''),
     status: 'PENDENTE',
-    created_at: todayISO(config.TIMEZONE),
+    created_at: new Date().toISOString(),
   });
   return ok({ status: 'PENDENTE' }, 201);
 }
@@ -97,6 +110,46 @@ function mockSystem(method, path, params) {
     if (!allowed[match[2]].includes(tenant.status)) return fail(409, 'INVALID_STATE', 'Ação não permitida para a situação atual.');
     tenant.status = match[2] === 'block' ? 'BLOQUEADO' : 'ATIVO';
     return ok(tenant);
+  }
+  return fail(404, 'NOT_FOUND', 'Recurso não encontrado.');
+}
+
+function mockChangePassword(body) {
+  if (String(body?.current_password ?? '').length < 8) return fail(400, 'INVALID_PASSWORD', 'A senha atual está incorreta.');
+  if (!/^(?=.*[A-Za-z])(?=.*\d).{8,128}$/.test(String(body?.new_password ?? ''))) {
+    return fail(400, 'VALIDATION_ERROR', 'A senha deve ter de 8 a 128 caracteres, com letras e números.');
+  }
+  return ok({});
+}
+
+function mockUsers(method, path, body, session) {
+  if (method === 'GET' && path === '/users') return ok({ items: users.slice().sort((a, b) => Number(b.active) - Number(a.active)) });
+
+  if (method === 'POST' && path === '/users') {
+    if (!isValidEmail(body?.email) || String(body?.name ?? '').trim().length < 2 || !['ADMIN', 'OPERADOR'].includes(body?.role)) {
+      return fail(400, 'VALIDATION_ERROR', 'Dados inválidos.');
+    }
+    if (users.some((u) => u.email === body.email)) return fail(409, 'CONFLICT', 'Este e-mail já está em uso.');
+    const user = { id: users.length + 1, name: body.name.trim(), email: body.email, role: body.role, active: true, last_login_at: null, created_at: new Date().toISOString() };
+    users.push(user);
+    return ok(user, 201);
+  }
+
+  const match = path.match(/^\/users\/(\d+)(\/password)?$/);
+  const user = match && users.find((u) => u.id === Number(match[1]));
+  if (!user) return fail(404, 'NOT_FOUND', 'Usuário não encontrado.');
+  const self = user.id === session.user.id;
+
+  if (method === 'POST' && match[2]) {
+    if (self) return fail(409, 'INVALID_STATE', 'Para trocar a sua senha, use "Minha conta".');
+    return ok({});
+  }
+  if (method === 'PUT' && !match[2]) {
+    if (self && ((body.role && body.role !== user.role) || body.active === false)) {
+      return fail(409, 'INVALID_STATE', 'Você não pode alterar o próprio perfil nem desativar a si mesmo.');
+    }
+    Object.assign(user, body);
+    return ok(user);
   }
   return fail(404, 'NOT_FOUND', 'Recurso não encontrado.');
 }

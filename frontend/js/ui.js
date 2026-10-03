@@ -65,7 +65,7 @@ export function openModal({ title, content, actions = [], onClose }) {
       actions.map((a) => el('button', {
         class: `btn btn-lg ${a.variant ?? ''}`,
         type: 'button',
-        onclick: () => (a.onClick ? a.onClick(close) : close(a.value)),
+        onclick: (e) => (a.onClick ? a.onClick(close, e.currentTarget) : close(a.value)),
       }, a.label)),
     ));
   }
@@ -114,4 +114,30 @@ export function setFieldError(input, message) {
   const errorEl = document.getElementById(`${input.id}-error`);
   input.setAttribute('aria-invalid', message ? 'true' : 'false');
   if (errorEl) errorEl.textContent = message ?? '';
+}
+
+/**
+ * Valida campos: rules = [[input, (valor) => mensagemDeErro | null], ...].
+ * Mostra os erros, foca o primeiro campo inválido e retorna true se tudo estiver certo.
+ * Serve só para orientar o usuário: o servidor valida tudo novamente.
+ */
+export function validateFields(rules) {
+  let firstInvalid = null;
+  for (const [input, check] of rules) {
+    const message = check(input.value);
+    setFieldError(input, message);
+    if (message && !firstInvalid) firstInvalid = input;
+  }
+  firstInvalid?.focus();
+  return !firstInvalid;
+}
+
+/** Campo de formulário com rótulo, dica opcional e área de erro. */
+export function field({ id, label, hint, ...inputAttrs }) {
+  return el('div', { class: 'field' },
+    el('label', { for: id }, label),
+    el('input', { class: 'input', id, ...inputAttrs }),
+    hint ? el('span', { class: 'hint' }, hint) : null,
+    el('span', { class: 'field-error', id: `${id}-error` }),
+  );
 }

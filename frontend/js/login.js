@@ -3,8 +3,8 @@
 import { config } from './config.js';
 import { login, requestAccess } from './auth.js';
 import { getSession, homeFor, SCOPE } from './session.js';
-import { isValidEmail } from './format.js';
-import { setBusy, setFieldError } from './ui.js';
+import { isValidEmail, isStrongPassword } from './format.js';
+import { setBusy, setFieldError, validateFields } from './ui.js';
 import { registerServiceWorker } from './pwa.js';
 
 const MODES = {
@@ -48,19 +48,7 @@ function setMode(next) {
   document.querySelectorAll('.input').forEach((input) => setFieldError(input, ''));
 }
 
-/* Validação no cliente: só para orientar o usuário. O Worker valida tudo novamente. */
-
-function validate(rules) {
-  let firstInvalid = null;
-  for (const [id, check] of rules) {
-    const input = $(id);
-    const message = check(input.value);
-    setFieldError(input, message);
-    if (message && !firstInvalid) firstInvalid = input;
-  }
-  firstInvalid?.focus();
-  return !firstInvalid;
-}
+const validate = (rules) => validateFields(rules.map(([id, check]) => [$(id), check]));
 
 const required = (label) => (v) => (v.trim() ? null : `Informe ${label}.`);
 const emailRule = (v) => (isValidEmail(v.trim()) ? null : 'Informe um e-mail válido.');
@@ -69,7 +57,7 @@ const phoneRule = (v) => {
   const digits = v.replace(/\D/g, '');
   return !v.trim() || (digits.length >= 10 && digits.length <= 13) ? null : 'Telefone inválido. Use DDD + número.';
 };
-const passwordRule = (v) => (v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v) ? null : 'Mínimo de 8 caracteres, com letras e números.');
+const passwordRule = (v) => (isStrongPassword(v) ? null : 'Mínimo de 8 caracteres, com letras e números.');
 
 async function onLogin(event) {
   event.preventDefault();
