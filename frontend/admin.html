@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0a6e7d">
+  <title>Clientes · Administrador do sistema</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/mobile.css">
+  <script type="module" src="js/admin.js"></script>
+</head>
+<body data-page="admin" data-scope="system" data-roles="SUPER_ADMIN">
+  <main class="page page-no-nav">
+    <div class="page-title">
+      <h1>Clientes</h1>
+    </div>
+
+    <div class="admin-summary">
+      <div class="card"><div class="stat-label">Pendentes</div><div class="stat-value num" id="count-PENDENTE">–</div></div>
+      <div class="card"><div class="stat-label">Ativos</div><div class="stat-value num" id="count-ATIVO">–</div></div>
+      <div class="card"><div class="stat-label">Bloqueados</div><div class="stat-value num" id="count-BLOQUEADO">–</div></div>
+    </div>
+
+    <div class="field">
+      <label class="sr-only" for="tenant-search">Buscar cliente</label>
+      <input class="input" id="tenant-search" type="search" placeholder="Buscar por nome ou e-mail" maxlength="80" autocomplete="off">
+    </div>
+
+    <div class="chips" role="group" aria-label="Situação" id="status-chips">
+      <button class="chip" type="button" data-status="PENDENTE">Pendentes</button>
+      <button class="chip" type="button" data-status="ATIVO">Ativos</button>
+      <button class="chip" type="button" data-status="BLOQUEADO">Bloqueados</button>
+      <button class="chip" type="button" data-status="">Todos</button>
+    </div>
+
+    <div class="section" id="tenant-list" aria-live="polite"></div>
+  </main>
+</body>
+</html>

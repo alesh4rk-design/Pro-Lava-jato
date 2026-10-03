@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0a6e7d">
+  <title>Início · Lava-Jato Gestão</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/mobile.css">
+  <script type="module" src="js/dashboard.js"></script>
+</head>
+<body data-page="dashboard" data-scope="tenant">
+  <main class="page">
+    <div class="page-title">
+      <h1>Início</h1>
+      <span class="badge badge-primary" id="period-label"></span>
+    </div>
+
+    <div class="chips" role="group" aria-label="Período" id="period-chips">
+      <button class="chip" type="button" data-period="today">Hoje</button>
+      <button class="chip" type="button" data-period="7d">7 dias</button>
+      <button class="chip" type="button" data-period="month">Este mês</button>
+      <button class="chip" type="button" data-period="last_month">Mês anterior</button>
+      <button class="chip" type="button" data-period="year">Este ano</button>
+      <button class="chip" type="button" data-period="custom">Personalizado</button>
+    </div>
+
+    <div id="dash-content" class="section" aria-live="polite"></div>
+
+    <section class="section">
+      <h2 class="section-title">Lançamento rápido</h2>
+      <div class="quick-actions">
+        <a class="action-tile tile-in" href="lancamento.html?tipo=receita">
+          <span class="tile-icon"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#arrow-up"></use></svg></span>
+          Receita
+        </a>
+        <a class="action-tile tile-out" href="lancamento.html?tipo=despesa">
+          <span class="tile-icon"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#arrow-down"></use></svg></span>
+          Despesa
+        </a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

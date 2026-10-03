@@ -1,0 +1,23 @@
+{
+  "id": "./",
+  "name": "Lava-Jato Gestão",
+  "short_name": "LJ Gestão",
+  "description": "Controle financeiro do lava-jato: receitas, despesas, caixa e resultado.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a6e7d",
+  "theme_color": "#0a6e7d",
+  "categories": ["finance", "business", "productivity"],
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Lançar", "url": "./lancamento.html", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Caixa", "url": "./caixa.html", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

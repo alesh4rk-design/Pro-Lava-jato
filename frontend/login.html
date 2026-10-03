@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0a6e7d">
+  <title>Entrar · Lava-Jato Gestão</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/mobile.css">
+  <script type="module" src="js/login.js"></script>
+</head>
+<body>
+  <main class="auth-page">
+    <section class="auth-card" id="auth" data-mode="login">
+      <div class="brand">
+        <img src="assets/icons/icon-192.png" alt="" width="72" height="72">
+        <h1 id="auth-title">Lava-Jato Gestão</h1>
+        <p class="muted" id="auth-subtitle">Entre para acessar o controle financeiro.</p>
+      </div>
+
+      <div class="form-alert" id="form-alert" role="alert" hidden></div>
+
+      <form class="form" id="login-form" novalidate>
+        <div class="field">
+          <label for="login-email">E-mail</label>
+          <input class="input" id="login-email" name="email" type="email" inputmode="email" autocomplete="username" maxlength="254" required>
+          <span class="field-error" id="login-email-error"></span>
+        </div>
+        <div class="field">
+          <label for="login-password">Senha</label>
+          <div class="input-group">
+            <input class="input" id="login-password" name="password" type="password" autocomplete="current-password" maxlength="128" required>
+            <button class="btn btn-icon" type="button" data-toggle-password="login-password" aria-label="Mostrar senha">
+              <svg class="icon" aria-hidden="true"><use href="assets/icons.svg#eye"></use></svg>
+            </button>
+          </div>
+          <span class="field-error" id="login-password-error"></span>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit" id="login-submit">Entrar</button>
+      </form>
+
+      <form class="form" id="request-form" novalidate hidden>
+        <div class="field">
+          <label for="req-business">Nome do lava-jato</label>
+          <input class="input" id="req-business" type="text" autocomplete="organization" maxlength="80" required>
+          <span class="field-error" id="req-business-error"></span>
+        </div>
+        <div class="field">
+          <label for="req-owner">Seu nome</label>
+          <input class="input" id="req-owner" type="text" autocomplete="name" maxlength="80" required>
+          <span class="field-error" id="req-owner-error"></span>
+        </div>
+        <div class="field">
+          <label for="req-email">E-mail</label>
+          <input class="input" id="req-email" type="email" inputmode="email" autocomplete="email" maxlength="254" required>
+          <span class="field-error" id="req-email-error"></span>
+        </div>
+        <div class="field">
+          <label for="req-phone">Telefone / WhatsApp <span class="muted">(opcional)</span></label>
+          <input class="input" id="req-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="20">
+          <span class="field-error" id="req-phone-error"></span>
+        </div>
+        <div class="field">
+          <label for="req-password">Crie uma senha</label>
+          <div class="input-group">
+            <input class="input" id="req-password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+            <button class="btn btn-icon" type="button" data-toggle-password="req-password" aria-label="Mostrar senha">
+              <svg class="icon" aria-hidden="true"><use href="assets/icons.svg#eye"></use></svg>
+            </button>
+          </div>
+          <span class="field-error" id="req-password-error"></span>
+        </div>
+        <div class="field">
+          <label for="req-password2">Repita a senha</label>
+          <input class="input" id="req-password2" type="password" autocomplete="new-password" maxlength="128" required>
+          <span class="field-error" id="req-password2-error"></span>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit" id="request-submit">Enviar solicitação</button>
+      </form>
+
+      <div class="auth-footer">
+        <button class="btn btn-ghost" type="button" id="show-request">Não tem acesso? Solicitar acesso</button>
+        <button class="btn btn-ghost" type="button" id="show-login" hidden>Voltar para o login</button>
+        <button class="btn btn-ghost" type="button" id="toggle-system">Entrar como administrador do sistema</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

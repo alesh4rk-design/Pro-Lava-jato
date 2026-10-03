@@ -1,0 +1,9 @@
+{
+  "name": "pro-lava-jato",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "dev": "npx --yes serve frontend -l 5173"
+  }
+}
