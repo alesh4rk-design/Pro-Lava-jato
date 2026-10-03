@@ -645,12 +645,68 @@
   max-width: 32ch;
 }
 
-/* Aviso do modo demonstração */
-.demo-banner {
-  padding: var(--space-2) var(--space-4);
-  background: var(--warning-soft);
-  color: var(--warning);
-  font-size: var(--fs-xs);
+/* Chips que quebram linha (formulários) */
+.chips-wrap {
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.chips-wrap .chip {
+  min-height: var(--touch);
+}
+
+.chip-hint {
+  margin-left: var(--space-2);
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* Campo de valor em destaque */
+.money-field {
+  position: relative;
+}
+
+.money-field .money-prefix {
+  position: absolute;
+  top: 50%;
+  left: var(--space-4);
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: var(--fs-lg);
   font-weight: 700;
-  text-align: center;
+  pointer-events: none;
+}
+
+.money-field .input {
+  min-height: 64px;
+  padding-left: 56px;
+  font-size: var(--fs-xl);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+details.more {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+}
+
+details.more summary {
+  min-height: var(--touch);
+  display: flex;
+  align-items: center;
+  color: var(--primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+details.more[open] summary {
+  margin-bottom: var(--space-3);
+}
+
+textarea.input {
+  min-height: 96px;
+  padding-top: var(--space-3);
+  resize: vertical;
 }

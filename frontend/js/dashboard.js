@@ -2,22 +2,12 @@
 
 import { session } from './app.js';
 import { api } from './api.js';
-import { config } from './config.js';
-import { formatCents, formatBasisPoints, formatInteger, formatDate, isValidISODate, todayISO } from './format.js';
-import { el, openModal, stateView, setFieldError } from './ui.js';
-
-const PERIOD_LABELS = {
-  today: 'Hoje',
-  '7d': 'Últimos 7 dias',
-  month: 'Este mês',
-  last_month: 'Mês anterior',
-  year: 'Este ano',
-};
-const STORAGE_KEY = 'lj.dashboard.period';
+import { formatCents, formatBasisPoints, formatInteger, formatDate } from './format.js';
+import { el, stateView } from './ui.js';
+import { periodPicker } from './periods.js';
 
 const content = document.getElementById('dash-content');
 const label = document.getElementById('period-label');
-const chips = document.querySelectorAll('#period-chips .chip');
 const cache = new Map();
 let requestSeq = 0;
 
@@ -106,73 +96,16 @@ async function load(query) {
   }
 }
 
-function selectChip(period) {
-  chips.forEach((chip) => chip.setAttribute('aria-pressed', String(chip.dataset.period === period)));
-}
-
-function selectPeriod(period) {
-  selectChip(period);
-  label.textContent = PERIOD_LABELS[period] ?? '';
-  try {
-    sessionStorage.setItem(STORAGE_KEY, period);
-  } catch {
-    // ignorado
-  }
-  load(new URLSearchParams({ period }).toString());
-}
-
-function dateField(id, text, value) {
-  return el('div', { class: 'field' },
-    el('label', { for: id }, text),
-    el('input', { class: 'input', id, type: 'date', value, required: true }),
-    el('span', { class: 'field-error', id: `${id}-error` }),
-  );
-}
-
-function openCustomPeriod() {
-  const today = todayISO(config.TIMEZONE);
-  const form = el('form', { class: 'form', novalidate: true },
-    dateField('custom-start', 'De', `${today.slice(0, 8)}01`),
-    dateField('custom-end', 'Até', today),
-  );
-  openModal({
-    title: 'Período personalizado',
-    content: form,
-    actions: [
-      { label: 'Cancelar', variant: 'btn-outline' },
-      {
-        label: 'Aplicar',
-        variant: 'btn-primary',
-        onClick: (close) => {
-          const start = form.querySelector('#custom-start');
-          const end = form.querySelector('#custom-end');
-          setFieldError(start, isValidISODate(start.value) ? null : 'Data inválida.');
-          const endError = !isValidISODate(end.value) ? 'Data inválida.' : end.value < start.value ? 'Deve ser depois da data inicial.' : null;
-          setFieldError(end, endError);
-          if (!isValidISODate(start.value) || endError) return;
-          close();
-          selectChip('custom');
-          load(new URLSearchParams({ period: 'custom', start: start.value, end: end.value }).toString());
-        },
-      },
-    ],
-  });
-}
-
 function init() {
   if (!session) return;
-  chips.forEach((chip) => chip.addEventListener('click', () => {
-    if (chip.dataset.period === 'custom') openCustomPeriod();
-    else selectPeriod(chip.dataset.period);
-  }));
-  let initial = 'month';
-  try {
-    const saved = sessionStorage.getItem(STORAGE_KEY);
-    if (saved && PERIOD_LABELS[saved]) initial = saved;
-  } catch {
-    // ignorado
-  }
-  selectPeriod(initial);
+  periodPicker({
+    container: document.getElementById('period-chips'),
+    storageKey: 'lj.dashboard.period',
+    onChange: ({ label: text, query }) => {
+      label.textContent = text;
+      load(query);
+    },
+  });
 }
 
 init();

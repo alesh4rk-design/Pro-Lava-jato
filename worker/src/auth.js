@@ -6,6 +6,7 @@ import * as v from './lib/validate.js';
 import { hashPassword, verifyPassword, burnPasswordCheck, generateToken, sha256Hex } from './lib/crypto.js';
 import { rateLimit, resetRateLimit, SESSION_TTL_MS } from './middleware.js';
 import { audit, auditStatement, actorOf } from './audit.js';
+import { seedDefaultCategories } from './categories.js';
 
 const LOGIN_WINDOW_S = 15 * 60;
 
@@ -140,10 +141,12 @@ export async function requestAccess({ request, env, ip }) {
     await env.DB.batch([
       env.DB.prepare(`INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, 'ADMIN')`)
         .bind(tenant.id, data.ownerName, data.email, passwordHash),
+      seedDefaultCategories(env, tenant.id),
       await auditStatement(env, { tenantId: tenant.id, actor: { type: 'ANONYMOUS' }, action: 'ACCESS_REQUESTED', entity: 'tenant', entityId: tenant.id, details: { business_name: data.businessName, email: data.email }, ip }),
     ]);
   } catch (error) {
     // Corrida rara (mesmo e-mail enviado ao mesmo tempo): desfaz o lava-jato sem usuário.
+    // O batch é uma transação: nada dele (usuário, categorias, auditoria) foi gravado.
     await env.DB.prepare('DELETE FROM tenants WHERE id = ?').bind(tenant.id).run();
     if (String(error?.message).includes('UNIQUE')) return accepted;
     throw error;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev http://127.0.0.1:8787; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#0a6e7d">
   <title>Início · Lava-Jato Gestão</title>
@@ -22,14 +22,7 @@
       <span class="badge badge-primary" id="period-label"></span>
     </div>
 
-    <div class="chips" role="group" aria-label="Período" id="period-chips">
-      <button class="chip" type="button" data-period="today">Hoje</button>
-      <button class="chip" type="button" data-period="7d">7 dias</button>
-      <button class="chip" type="button" data-period="month">Este mês</button>
-      <button class="chip" type="button" data-period="last_month">Mês anterior</button>
-      <button class="chip" type="button" data-period="year">Este ano</button>
-      <button class="chip" type="button" data-period="custom">Personalizado</button>
-    </div>
+    <div class="chips" role="group" aria-label="Período" id="period-chips"></div>
 
     <div id="dash-content" class="section" aria-live="polite"></div>
 

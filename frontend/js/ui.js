@@ -141,3 +141,43 @@ export function field({ id, label, hint, ...inputAttrs }) {
     el('span', { class: 'field-error', id: `${id}-error` }),
   );
 }
+
+/**
+ * Grupo de chips de escolha única (forma de pagamento, serviço, categoria...).
+ * options: [{ value, label, hint? }]. Retorna { element, get value(), set value(v) }.
+ */
+export function chipGroup({ label, options, value, onChange }) {
+  let current = value;
+  const buttons = options.map((opt) => el('button', {
+    class: 'chip',
+    type: 'button',
+    'aria-pressed': String(opt.value === current),
+    onclick: () => {
+      current = opt.value;
+      buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(options[i].value === current)));
+      onChange?.(opt);
+    },
+  }, opt.label, opt.hint ? el('small', { class: 'chip-hint' }, opt.hint) : null));
+  const element = el('div', { class: 'chips chips-wrap', role: 'group', 'aria-label': label }, buttons);
+  return {
+    element,
+    get value() { return current; },
+    set value(v) {
+      current = v;
+      buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(options[i].value === current)));
+    },
+  };
+}
+
+/** Executa a requisição com o botão em carregamento; erro do servidor vira toast. Retorna null se falhar. */
+export async function runBusy(button, request) {
+  setBusy(button, true);
+  try {
+    return await request();
+  } catch (error) {
+    toast(error.message, { type: 'error' });
+    return null;
+  } finally {
+    setBusy(button, false);
+  }
+}

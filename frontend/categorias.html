@@ -6,26 +6,30 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev http://127.0.0.1:8787; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#0a6e7d">
-  <title>Usuários · Lava-Jato Gestão</title>
+  <title>Categorias · Lava-Jato Gestão</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/icons/icon-192.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <link rel="stylesheet" href="css/global.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/mobile.css">
-  <script type="module" src="js/usuarios.js"></script>
+  <script type="module" src="js/categorias.js"></script>
 </head>
 <body data-page="mais" data-scope="tenant" data-roles="ADMIN">
   <main class="page">
     <div class="page-title">
-      <h1>Usuários</h1>
-      <button class="btn btn-primary" type="button" id="new-user">
+      <h1>Categorias</h1>
+      <button class="btn btn-primary" type="button" id="new-category">
         <svg class="icon icon-sm" aria-hidden="true"><use href="assets/icons.svg#plus"></use></svg>
-        Novo
+        Nova
       </button>
     </div>
-    <p class="muted">Cadastre quem faz os lançamentos do dia. Operadores registram receitas e despesas; administradores também gerenciam cadastros e usuários.</p>
-    <div class="section" id="user-list" aria-live="polite"></div>
+    <div class="chips" role="group" aria-label="Tipo de categoria" id="kind-chips">
+      <button class="chip" type="button" data-kind="DESPESA" aria-pressed="true">Despesas</button>
+      <button class="chip" type="button" data-kind="PRODUTO" aria-pressed="false">Produtos</button>
+    </div>
+    <p class="muted" id="kind-hint"></p>
+    <div class="section" id="category-list" aria-live="polite"></div>
   </main>
 </body>
 </html>

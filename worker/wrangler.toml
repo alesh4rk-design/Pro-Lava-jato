@@ -16,6 +16,8 @@ migrations_dir = "migrations"
 [vars]
 # Origens que podem chamar a API (sem barra final e sem caminho), separadas por vírgula.
 ALLOWED_ORIGINS = "https://alesh4rk-design.github.io"
+# Fuso usado para "hoje", períodos e validação de datas.
+TIMEZONE = "America/Sao_Paulo"
 
 # Segredo exigido em produção (definir com `npx wrangler secret put IP_HASH_SALT`):
 #   IP_HASH_SALT  texto aleatório longo, usado para guardar IPs apenas como hash na auditoria

@@ -73,3 +73,35 @@ export function onlyFields(body, allowed) {
   if (extra.length) throw errors.validation('A requisição contém campos não permitidos.');
   return body;
 }
+
+export const MAX_CENTS = 10_000_000_000; // R$ 100 milhões por lançamento
+
+/** Valor monetário em centavos: inteiro positivo dentro do teto. Rejeita 70.5, "7050", NaN. */
+export function cents(value, field = 'valor') {
+  if (!Number.isSafeInteger(value) || value <= 0 || value > MAX_CENTS) throw errors.validation(`Campo "${field}" inválido.`);
+  return value;
+}
+
+/** ID vindo no corpo JSON (número inteiro positivo). */
+export function bodyId(value, field) {
+  if (!Number.isSafeInteger(value) || value <= 0) throw errors.validation(`Campo "${field}" inválido.`);
+  return value;
+}
+
+export function optionalBodyId(value, field) {
+  return value === undefined || value === null ? null : bodyId(value, field);
+}
+
+/** Número da página em query string (1..10000). */
+export function page(searchParams) {
+  const raw = searchParams.get('page') ?? '1';
+  if (!/^[1-9]\d{0,3}$/.test(raw)) throw errors.validation('Página inválida.');
+  return Number(raw);
+}
+
+/** Texto de busca para LIKE, com curingas escapados (usar com ESCAPE '\\'). */
+export function likePattern(value) {
+  if (value === null || value === undefined || value.trim() === '') return null;
+  const clean = text(value, { field: 'busca', max: 60 });
+  return `%${clean.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}

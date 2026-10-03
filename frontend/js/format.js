@@ -15,18 +15,27 @@ export function formatCents(cents) {
 }
 
 /**
- * Converte texto digitado ("1.234,56", "70,5", "40") em centavos.
+ * Converte texto digitado ("1.234,56", "70,5", "40", "10.50") em centavos.
+ * Teclados de celular às vezes oferecem ponto como separador decimal: um único ponto seguido
+ * de 1 ou 2 dígitos (sem vírgula) é tratado como decimal; seguido de 3 dígitos, como milhar.
  * Retorna null se o valor for inválido, zero, negativo ou acima do teto.
  */
 export function parseMoneyToCents(input) {
   if (typeof input !== 'string') return null;
-  const text = input.replace(/^\s*R\$\s*/i, '').trim();
+  let text = input.replace(/^\s*R\$\s*/i, '').trim();
+  if (/^\d+\.\d{1,2}$/.test(text)) text = text.replace('.', ',');
   if (!/^\d{1,3}(\.\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$/.test(text)) return null;
 
   const [intPart, decPart = ''] = text.replace(/\./g, '').split(',');
   const cents = Number(intPart) * 100 + Number(decPart.padEnd(2, '0'));
   if (!Number.isSafeInteger(cents) || cents <= 0 || cents > MAX_CENTS) return null;
   return cents;
+}
+
+/** Centavos -> texto para edição em campo ("7050" -> "70,50"). */
+export function centsToInput(cents) {
+  if (!Number.isSafeInteger(cents) || cents <= 0) return '';
+  return `${Math.trunc(cents / 100)},${String(cents % 100).padStart(2, '0')}`;
 }
 
 /** Margem em pontos-base (4350 = 43,50%) -> "43,5%". */

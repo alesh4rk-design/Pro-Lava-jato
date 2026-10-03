@@ -5,6 +5,12 @@ import { corsHeaders, assertOrigin, authenticateTenant, authenticateSystem, requ
 import * as authRoutes from './auth.js';
 import * as users from './users.js';
 import * as system from './system.js';
+import * as categories from './categories.js';
+import * as services from './services.js';
+import * as revenues from './revenues.js';
+import * as expenses from './expenses.js';
+import * as cash from './cash.js';
+import * as dashboard from './dashboard.js';
 
 const { ADMIN, OPERADOR } = ROLES;
 const PUBLIC = null;
@@ -28,6 +34,29 @@ const ROUTES = [
   ['POST', '/api/users', TENANT, [ADMIN], users.createUser],
   ['PUT', '/api/users/:id', TENANT, [ADMIN], users.updateUser],
   ['POST', '/api/users/:id/password', TENANT, [ADMIN], users.resetUserPassword],
+
+  ['GET', '/api/dashboard', TENANT, [], dashboard.getDashboard],
+
+  ['GET', '/api/categories', TENANT, [], categories.listCategories],
+  ['POST', '/api/categories', TENANT, [ADMIN], categories.createCategory],
+  ['PUT', '/api/categories/:id', TENANT, [ADMIN], categories.updateCategory],
+
+  ['GET', '/api/services', TENANT, [], services.listServices],
+
+  ['GET', '/api/revenues', TENANT, [], revenues.listRevenues],
+  ['POST', '/api/revenues', TENANT, [ADMIN, OPERADOR], revenues.createRevenue],
+  ['GET', '/api/revenues/:id', TENANT, [], revenues.getRevenue],
+  ['PUT', '/api/revenues/:id', TENANT, [ADMIN], revenues.updateRevenue],
+  ['DELETE', '/api/revenues/:id', TENANT, [ADMIN], revenues.cancelRevenue],
+
+  ['GET', '/api/expenses', TENANT, [], expenses.listExpenses],
+  ['POST', '/api/expenses', TENANT, [ADMIN, OPERADOR], expenses.createExpense],
+  ['GET', '/api/expenses/:id', TENANT, [], expenses.getExpense],
+  ['PUT', '/api/expenses/:id', TENANT, [ADMIN], expenses.updateExpense],
+  ['DELETE', '/api/expenses/:id', TENANT, [ADMIN], expenses.cancelExpense],
+
+  ['GET', '/api/cash', TENANT, [], cash.cashSummary],
+  ['GET', '/api/cash/entries', TENANT, [], cash.cashEntries],
 
   ['POST', '/api/system/auth/login', PUBLIC, [], authRoutes.systemLogin],
   ['POST', '/api/system/auth/logout', SYSTEM, [], authRoutes.logout],

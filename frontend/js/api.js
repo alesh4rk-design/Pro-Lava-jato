@@ -15,11 +15,6 @@ const NETWORK_ERROR = new ApiError('NETWORK_ERROR', 'Sem conexão com o servidor
 const GENERIC_ERROR = 'Não foi possível concluir a operação. Tente novamente.';
 
 async function send(method, path, body) {
-  if (config.USE_MOCK) {
-    const { handleMock } = await import('./mock.js');
-    return handleMock(method, path, body, getSession());
-  }
-
   const headers = { Accept: 'application/json' };
   const token = getSession()?.token;
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -69,5 +64,5 @@ export const api = {
   get: (path) => request('GET', path),
   post: (path, body = {}) => request('POST', path, body),
   put: (path, body = {}) => request('PUT', path, body),
-  del: (path) => request('DELETE', path),
+  del: (path, body) => request('DELETE', path, body),
 };

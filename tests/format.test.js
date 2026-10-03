@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  formatCents, parseMoneyToCents, formatBasisPoints, isValidISODate, formatDate, formatDateTime, formatPhone, todayISO, isValidEmail, MAX_CENTS,
+  formatCents, parseMoneyToCents, centsToInput, formatBasisPoints, isValidISODate, formatDate, formatDateTime, formatPhone, todayISO, isValidEmail, MAX_CENTS,
 } from '../frontend/js/format.js';
 
 test('formatCents usa padrão brasileiro e aritmética inteira', () => {
@@ -28,6 +28,17 @@ test('parseMoneyToCents converte formatos aceitos', () => {
   assert.equal(parseMoneyToCents('1234,56'), 123456);
   assert.equal(parseMoneyToCents(' R$ 18.450,00 '), 1845000);
   assert.equal(parseMoneyToCents('0,01'), 1);
+  // teclado com ponto decimal
+  assert.equal(parseMoneyToCents('10.5'), 1050);
+  assert.equal(parseMoneyToCents('10.50'), 1050);
+  assert.equal(parseMoneyToCents('1.234'), 123400);
+});
+
+test('centsToInput', () => {
+  assert.equal(centsToInput(7050), '70,50');
+  assert.equal(centsToInput(5), '0,05');
+  assert.equal(centsToInput(0), '');
+  assert.equal(parseMoneyToCents(centsToInput(123456)), 123456);
 });
 
 test('parseMoneyToCents evita erro de ponto flutuante', () => {
@@ -38,7 +49,7 @@ test('parseMoneyToCents evita erro de ponto flutuante', () => {
 });
 
 test('parseMoneyToCents rejeita entradas inválidas, negativas, zero e gigantes', () => {
-  for (const bad of ['', 'abc', '-10', '0', '0,00', '10,555', '1.23,00', '12.3456,00', '1e5', '10.5', '<script>', '1;DROP TABLE', null, undefined, 10]) {
+  for (const bad of ['', 'abc', '-10', '0', '0,00', '10,555', '1.23,00', '12.3456,00', '1e5', '10.555.5', '1.5.5', '<script>', '1;DROP TABLE', null, undefined, 10]) {
     assert.equal(parseMoneyToCents(bad), null, `deveria rejeitar ${String(bad)}`);
   }
   assert.equal(parseMoneyToCents('100.000.000,00'), MAX_CENTS);

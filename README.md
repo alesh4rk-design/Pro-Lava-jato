@@ -25,7 +25,7 @@ Um novo lava-jato usa **"Solicitar acesso"** na tela de login, informando o pró
 
 - [x] **Etapa 1:** estrutura, design mobile, PWA, login, painel do administrador do sistema, dashboard visual
 - [x] **Etapa 2:** D1, Worker, API, autenticação, sessões, RBAC, usuários e painel do administrador do sistema
-- [ ] Etapa 3: receitas, despesas, categorias, caixa
+- [x] **Etapa 3:** receitas, despesas, categorias, caixa e dashboard com dados reais
 - [ ] Etapa 4: produtos, estoque, serviços, custo por serviço
 - [ ] Etapa 5: dashboard real, relatórios, gráficos, ponto de equilíbrio
 - [ ] Etapa 6: auditoria, segurança, performance, testes
@@ -45,19 +45,15 @@ npm run dev     # API em http://127.0.0.1:8787
 npm test        # testes da API (rodam no runtime real dos Workers, com D1 local)
 ```
 
-### Modo demonstração (Etapa 1)
+Com o frontend aberto em `localhost`, ele usa automaticamente a API local (`http://127.0.0.1:8787`).
 
-Enquanto o Worker não existe, `frontend/js/config.js` usa `USE_MOCK: true`: as respostas são simuladas
-no navegador e **nada é salvo**. Qualquer e-mail válido com senha de 8+ caracteres entra. O início
-do e-mail simula situações:
+Para ter um acesso de administrador do sistema local:
 
-| E-mail | Resultado |
-|---|---|
-| `qualquer@...` | Administrador do lava-jato |
-| `operador@...` | Operador |
-| `pendente@...` | Acesso aguardando autorização |
-| `bloqueado@...` | Acesso bloqueado |
-| `erro@...` | Falha do servidor |
+```bash
+cd worker
+npm run create-system-admin
+npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
+```
 
 ## API (Cloudflare Worker)
 
@@ -71,11 +67,27 @@ do e-mail simula situações:
 | GET / POST | `/api/users` | ADMIN |
 | PUT | `/api/users/:id` | ADMIN |
 | POST | `/api/users/:id/password` | ADMIN |
+| GET | `/api/dashboard?period=` | lava-jato |
+| GET | `/api/categories?kind=` | lava-jato (ADMIN vê inativas) |
+| POST / PUT | `/api/categories` · `/:id` | ADMIN |
+| GET | `/api/services` | lava-jato |
+| GET / POST | `/api/revenues` · `/api/expenses` | lava-jato (lançar: ADMIN e OPERADOR) |
+| GET | `/api/revenues/:id` · `/api/expenses/:id` | lava-jato |
+| PUT / DELETE | `/api/revenues/:id` · `/api/expenses/:id` | ADMIN (DELETE = cancelar) |
+| GET | `/api/cash?period=` · `/api/cash/entries` | lava-jato |
 | POST | `/api/system/auth/login` · `/logout` | administrador do sistema |
 | GET | `/api/system/tenants?status=` | administrador do sistema |
 | POST | `/api/system/tenants/:id/approve` · `block` · `unblock` | administrador do sistema |
 
 Respostas: `{ "success": true, "data": … }` ou `{ "success": false, "error": { "code", "message" } }`.
+Períodos: `period=today|7d|month|last_month|year` ou `period=custom&start=AAAA-MM-DD&end=AAAA-MM-DD`.
+
+**Regras financeiras**
+- Faturamento = receitas ativas. Custos = despesas do tipo *custo variável*. Despesas = *fixas* + *outras*.
+- Resultado = faturamento − custos − despesas. Margem = resultado ÷ faturamento.
+- Serviços = receitas ligadas a um serviço. Ticket médio = faturamento ÷ número de receitas.
+- Lançamentos não são apagados: cancelar guarda quem, quando e o motivo, e o valor sai dos totais.
+- Datas de lançamento não podem ser futuras; "hoje" segue o fuso `TIMEZONE` (America/Sao_Paulo).
 As permissões de cada rota ficam numa única tabela em `worker/src/index.js`.
 
 ### Primeiro deploy da API
@@ -92,8 +104,7 @@ npm run create-system-admin                  # cria o SEU acesso (senha não apa
 npx wrangler d1 execute lava-jato-db --remote --file=.admin.sql && rm .admin.sql
 ```
 
-Depois, em `frontend/js/config.js`: `API_BASE_URL` = URL do Worker + `/api` e `USE_MOCK: false`.
-O dashboard real chega na Etapa 5; até lá, a tela Início mostra erro com a API real.
+Depois, em `frontend/js/config.js`, troque a URL de produção pela do Worker (+ `/api`).
 
 ## Publicação do frontend
 

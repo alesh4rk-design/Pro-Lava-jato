@@ -4,7 +4,7 @@ import { session } from './app.js';
 import { api } from './api.js';
 import { config } from './config.js';
 import { formatDateTime, isValidEmail, isStrongPassword } from './format.js';
-import { el, icon, field, toast, openModal, confirmDialog, stateView, setBusy, validateFields } from './ui.js';
+import { el, icon, field, toast, openModal, confirmDialog, stateView, runBusy, validateFields } from './ui.js';
 
 const ROLE_LABEL = { ADMIN: 'Administrador', OPERADOR: 'Operador' };
 
@@ -23,19 +23,6 @@ function roleSelector(current, disabled) {
 }
 
 const selectedRole = (form) => form.querySelector('input[name="role"]:checked')?.value;
-
-/** Executa a chamada com o botão em estado de carregamento; mostra o erro em toast. */
-async function submit(button, request) {
-  setBusy(button, true);
-  try {
-    return await request();
-  } catch (error) {
-    toast(error.message, { type: 'error' });
-    return null;
-  } finally {
-    setBusy(button, false);
-  }
-}
 
 function openCreate() {
   const form = el('form', { class: 'form', novalidate: true },
@@ -56,7 +43,7 @@ function openCreate() {
         onClick: async (close, button) => {
           const [name, email, password] = ['u-name', 'u-email', 'u-password'].map((id) => form.querySelector(`#${id}`));
           if (!validateFields([[name, nameRule], [email, emailRule], [password, passwordRule]])) return;
-          const created = await submit(button, () => api.post('/users', {
+          const created = await runBusy(button, () => api.post('/users', {
             name: name.value.trim(),
             email: email.value.trim().toLowerCase(),
             password: password.value,
@@ -89,7 +76,7 @@ function openResetPassword(user) {
         onClick: async (close, button) => {
           const input = form.querySelector('#r-password');
           if (!validateFields([[input, passwordRule]])) return;
-          const done = await submit(button, () => api.post(`/users/${encodeURIComponent(user.id)}/password`, { password: input.value }));
+          const done = await runBusy(button, () => api.post(`/users/${encodeURIComponent(user.id)}/password`, { password: input.value }));
           if (done) {
             close();
             toast('Senha redefinida.', { type: 'success' });
@@ -138,7 +125,7 @@ function openEdit(user) {
             danger: true,
           }))) return;
 
-          const updated = await submit(button, () => api.put(`/users/${encodeURIComponent(user.id)}`, changes));
+          const updated = await runBusy(button, () => api.put(`/users/${encodeURIComponent(user.id)}`, changes));
           if (updated) {
             close();
             toast('Usuário atualizado.', { type: 'success' });

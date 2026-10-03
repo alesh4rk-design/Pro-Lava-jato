@@ -21,16 +21,24 @@ async function hashIp(env, ip) {
   return (await sha256Hex(`${env.IP_HASH_SALT ?? ''}:${ip}`)).slice(0, 32);
 }
 
+/** Marcador: usar o id do INSERT anterior no mesmo batch (last_insert_rowid()). */
+export const LAST_INSERT_ID = Object.freeze({ lastInsert: true });
+
 /**
  * @param {object} entry
  * @param {number|null} entry.tenantId
  * @param {{type: 'USER'|'SYSTEM_ADMIN'|'ANONYMOUS', id?: number}} entry.actor
+ * @param {number|null|typeof LAST_INSERT_ID} entry.entityId
  */
 export async function auditStatement(env, { tenantId = null, actor, action, entity, entityId = null, details = {}, ip }) {
+  const fromLastInsert = entityId === LAST_INSERT_ID;
+  const binds = [tenantId, actor.type, actor.id ?? null, action, entity];
+  if (!fromLastInsert) binds.push(entityId);
+  binds.push(JSON.stringify(scrub(details)), await hashIp(env, ip));
   return env.DB.prepare(
     `INSERT INTO audit_logs (tenant_id, actor_type, actor_id, action, entity, entity_id, details, ip_hash)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).bind(tenantId, actor.type, actor.id ?? null, action, entity, entityId, JSON.stringify(scrub(details)), await hashIp(env, ip));
+     VALUES (?, ?, ?, ?, ?, ${fromLastInsert ? 'last_insert_rowid()' : '?'}, ?, ?)`,
+  ).bind(...binds);
 }
 
 export async function audit(env, entry) {

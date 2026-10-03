@@ -48,9 +48,6 @@ function renderHeader(session) {
       el('span', { class: 'avatar' }, initial)),
   );
   document.body.prepend(header);
-  if (config.USE_MOCK) {
-    header.after(el('div', { class: 'demo-banner' }, 'Modo demonstração: dados simulados, nada é salvo.'));
-  }
 }
 
 function openAccount(session) {

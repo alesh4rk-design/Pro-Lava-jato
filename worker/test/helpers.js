@@ -69,3 +69,34 @@ export async function adminSession() {
 }
 
 export { env };
+
+export async function seedCategory(tenantId, { name = unique('Cat'), kind = 'DESPESA', type = 'DESPESA_FIXA', active = 1 } = {}) {
+  const row = await env.DB.prepare(
+    'INSERT INTO categories (tenant_id, name, kind, default_expense_type, active) VALUES (?, ?, ?, ?, ?) RETURNING id',
+  ).bind(tenantId, name, kind, kind === 'DESPESA' ? type : null, active).first();
+  return row.id;
+}
+
+export async function seedService(tenantId, { name = unique('Serv'), priceCents = 7000, active = 1 } = {}) {
+  const row = await env.DB.prepare('INSERT INTO services (tenant_id, name, price_cents, active) VALUES (?, ?, ?, ?) RETURNING id')
+    .bind(tenantId, name, priceCents, active).first();
+  return row.id;
+}
+
+/** "Hoje" no fuso do lava-jato, como o Worker calcula. */
+export const todayIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+
+/** Lava-jato com ADMIN logado, um OPERADOR logado, uma categoria e um serviço. */
+export async function financeFixture() {
+  const admin = await adminSession();
+  const op = await seedUser(admin.tenantId);
+  return {
+    ...admin,
+    adminToken: admin.token,
+    opToken: await login(op.email),
+    opUserId: op.userId,
+    categoryId: await seedCategory(admin.tenantId, { type: 'DESPESA_FIXA' }),
+    variableCategoryId: await seedCategory(admin.tenantId, { type: 'CUSTO_VARIAVEL' }),
+    serviceId: await seedService(admin.tenantId, { priceCents: 7000 }),
+  };
+}

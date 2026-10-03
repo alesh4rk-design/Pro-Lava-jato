@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev http://127.0.0.1:8787; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#0a6e7d">
   <title>Mais · Lava-Jato Gestão</title>
@@ -21,7 +21,7 @@
     <nav class="card list" aria-label="Cadastros e configurações">
       <div class="menu-link"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#package"></use></svg><span>Produtos e estoque</span><span class="badge chevron">Em breve</span></div>
       <div class="menu-link"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#droplet"></use></svg><span>Serviços</span><span class="badge chevron">Em breve</span></div>
-      <div class="menu-link" data-requires-role="ADMIN" hidden><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#tag"></use></svg><span>Categorias</span><span class="badge chevron">Em breve</span></div>
+      <a class="menu-link" href="categorias.html" data-requires-role="ADMIN" hidden><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#tag"></use></svg><span>Categorias</span><svg class="icon icon-sm chevron" aria-hidden="true"><use href="assets/icons.svg#chevron-right"></use></svg></a>
       <div class="menu-link" data-requires-role="ADMIN" hidden><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#settings"></use></svg><span>Configurações</span><span class="badge chevron">Em breve</span></div>
       <a class="menu-link" href="usuarios.html" data-requires-role="ADMIN" hidden><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#users"></use></svg><span>Usuários</span><svg class="icon icon-sm chevron" aria-hidden="true"><use href="assets/icons.svg#chevron-right"></use></svg></a>
       <div class="menu-link" data-requires-role="ADMIN" hidden><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#shield"></use></svg><span>Auditoria</span><span class="badge chevron">Em breve</span></div>
