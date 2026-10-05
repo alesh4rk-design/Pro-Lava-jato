@@ -160,6 +160,26 @@ test('análise, ponto de equilíbrio e auditoria', async () => {
   await expect(owner.locator('.audit-row').first()).toContainText('Entrou no sistema');
 });
 
+test('configurações: alterar o nome atualiza o topo e a auditoria', async () => {
+  await owner.goto('configuracoes.html');
+  await expect(owner.locator('#s-name')).toHaveValue(OWNER.business);
+  await owner.fill('#s-name', 'Brilho Central');
+  await owner.fill('#s-phone', '11988887777');
+  await owner.click('#s-save');
+  await expect(lastToast(owner)).toContainText('Configurações salvas');
+  await expect(owner.locator('.app-header-title strong')).toHaveText('Brilho Central');
+  await owner.reload();
+  await expect(owner.locator('.app-header-title strong')).toHaveText('Brilho Central');
+  await expect(owner.locator('#s-phone')).toHaveValue('(11) 98888-7777');
+
+  await owner.fill('#s-name', 'A');
+  await owner.click('#s-save');
+  await expect(owner.locator('#s-name-error')).toContainText('Informe o nome');
+
+  await owner.goto('auditoria.html');
+  await expect(owner.locator('.audit-row', { hasText: 'Alterou as configurações do lava-jato' })).toContainText('nome do lava-jato');
+});
+
 test('operador: lança, mas não vê custos nem áreas do administrador', async () => {
   await login(operator, OPERATOR);
   await operator.goto('lancamento.html?tipo=receita');
@@ -169,7 +189,7 @@ test('operador: lança, mas não vê custos nem áreas do administrador', async 
 
   await operator.goto('mais.html');
   await expect(operator.locator('.menu-link:visible')).toHaveText(['Produtos e estoque', 'Serviços']);
-  for (const page of ['usuarios.html', 'categorias.html', 'auditoria.html']) {
+  for (const page of ['usuarios.html', 'categorias.html', 'auditoria.html', 'configuracoes.html']) {
     await operator.goto(page);
     await operator.waitForURL(/dashboard\.html/);
   }
@@ -188,7 +208,7 @@ test('operador: lança, mas não vê custos nem áreas do administrador', async 
 });
 
 test('nenhuma tela rola para o lado em 360px', async () => {
-  const pages = ['dashboard', 'caixa', 'lancamento', 'analise', 'mais', 'produtos', 'servicos', 'categorias', 'usuarios', 'auditoria'];
+  const pages = ['dashboard', 'caixa', 'lancamento', 'analise', 'mais', 'produtos', 'servicos', 'categorias', 'usuarios', 'auditoria', 'configuracoes'];
   for (const name of pages) {
     await owner.goto(`${name}.html`);
     await owner.waitForLoadState('networkidle');

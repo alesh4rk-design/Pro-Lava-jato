@@ -15,6 +15,7 @@ import * as expenses from './expenses.js';
 import * as cash from './cash.js';
 import * as dashboard from './dashboard.js';
 import * as reports from './reports.js';
+import * as settings from './settings.js';
 
 const { ADMIN, OPERADOR } = ROLES;
 const PUBLIC = null;
@@ -41,6 +42,8 @@ const ROUTES = [
 
   ['GET', '/api/dashboard', TENANT, [], dashboard.getDashboard],
   ['GET', '/api/audit', TENANT, [ADMIN], listTenantAudit],
+  ['GET', '/api/settings', TENANT, [ADMIN], settings.getSettings],
+  ['PUT', '/api/settings', TENANT, [ADMIN], settings.updateSettings],
 
   ['GET', '/api/reports/financial', TENANT, [ADMIN], reports.financialReport],
   ['GET', '/api/reports/categories', TENANT, [ADMIN], reports.categoriesReport],

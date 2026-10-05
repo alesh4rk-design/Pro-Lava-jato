@@ -29,7 +29,7 @@ Um novo lava-jato usa **"Solicitar acesso"** na tela de login, informando o pró
 - [x] **Etapa 4:** produtos, estoque, custo médio, serviços e custo estimado por serviço
 - [x] **Etapa 5:** relatórios (financeiro, categorias, serviços, formas de pagamento), gráficos e ponto de equilíbrio
 - [x] **Etapa 6:** telas de auditoria, reforços de segurança, desempenho e testes de ponta a ponta
-- [ ] Etapa 7: deploy final e testes em celular
+- [x] **Etapa 7:** tela Configurações, guia de publicação e checklist de teste no celular (a publicação em si depende da sua conta Cloudflare)
 
 ## Rodar localmente
 
@@ -71,6 +71,7 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET | `/api/dashboard?period=` | lava-jato |
 | GET | `/api/reports/financial` · `categories` · `services` · `break-even` | ADMIN |
 | GET | `/api/audit?period=&group=&user_id=` | ADMIN (auditoria do lava-jato) |
+| GET / PUT | `/api/settings` | ADMIN (nome e telefone do lava-jato) |
 | GET | `/api/system/audit?period=` | administrador do sistema |
 | GET | `/api/categories?kind=` | lava-jato (ADMIN vê inativas) |
 | POST / PUT | `/api/categories` · `/:id` | ADMIN |
@@ -133,7 +134,11 @@ npx wrangler d1 execute lava-jato-db --remote --file=.admin.sql && rm .admin.sql
 
 Depois, em `frontend/js/config.js`, troque a URL de produção pela do Worker (+ `/api`).
 
-## Publicação do frontend
+## Publicação
+
+**Guia completo, passo a passo, para quem não é programador: [docs/PUBLICACAO.md](docs/PUBLICACAO.md).**
+
+### Publicação do frontend
 
 1. No GitHub: **Settings → Pages → Source: GitHub Actions**.
 2. Cada push na branch `main` roda os testes e publica a pasta `frontend/`.

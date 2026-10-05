@@ -9,7 +9,7 @@ const MOVEMENT = { ENTRADA: 'compra', SAIDA: 'consumo', AJUSTE: 'ajuste de estoq
 const FIELD_LABELS = {
   amount_cents: 'valor', payment_method: 'pagamento', date: 'data', description: 'descrição', notes: 'observação',
   service_id: 'serviço', category_id: 'categoria', type: 'tipo', name: 'nome', role: 'perfil', active: 'situação',
-  price_cents: 'preço', min_stock_qty: 'estoque mínimo', default_expense_type: 'tipo padrão',
+  price_cents: 'preço', business_name: 'nome do lava-jato', phone: 'telefone', min_stock_qty: 'estoque mínimo', default_expense_type: 'tipo padrão',
 };
 
 function fieldValue(field, value) {
@@ -39,6 +39,7 @@ const DESCRIBE = {
   LOGOUT: () => ['Saiu do sistema'],
   PASSWORD_CHANGED: () => ['Trocou a própria senha'],
   PASSWORD_RESET: () => ['Redefiniu a senha de um usuário'],
+  SETTINGS_CHANGED: (d) => ['Alterou as configurações do lava-jato', changes(d.before, d.after)],
   USER_CREATED: (d) => [`Cadastrou o usuário ${d.name}`, `${ROLE[d.role] ?? d.role} · ${d.email}`],
   USER_UPDATED: (d) => ['Alterou um usuário', changes(d.before, d.changes)],
   PERMISSION_CHANGED: (d) => ['Alterou o perfil de um usuário', changes(d.before, d.changes)],
