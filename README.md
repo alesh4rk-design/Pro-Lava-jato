@@ -28,14 +28,15 @@ Um novo lava-jato usa **"Solicitar acesso"** na tela de login, informando o pró
 - [x] **Etapa 3:** receitas, despesas, categorias, caixa e dashboard com dados reais
 - [x] **Etapa 4:** produtos, estoque, custo médio, serviços e custo estimado por serviço
 - [x] **Etapa 5:** relatórios (financeiro, categorias, serviços, formas de pagamento), gráficos e ponto de equilíbrio
-- [ ] Etapa 6: auditoria, segurança, performance, testes
+- [x] **Etapa 6:** telas de auditoria, reforços de segurança, desempenho e testes de ponta a ponta
 - [ ] Etapa 7: deploy final e testes em celular
 
 ## Rodar localmente
 
 ```bash
-npm run dev     # frontend em http://localhost:5173
-npm test        # testes do frontend
+npm run dev       # frontend em http://localhost:5173
+npm test          # testes do frontend
+npm run test:e2e  # ponta a ponta em tela de celular (sobe API e site sozinho, banco novo)
 
 cd worker
 npm install
@@ -69,6 +70,8 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | POST | `/api/users/:id/password` | ADMIN |
 | GET | `/api/dashboard?period=` | lava-jato |
 | GET | `/api/reports/financial` · `categories` · `services` · `break-even` | ADMIN |
+| GET | `/api/audit?period=&group=&user_id=` | ADMIN (auditoria do lava-jato) |
+| GET | `/api/system/audit?period=` | administrador do sistema |
 | GET | `/api/categories?kind=` | lava-jato (ADMIN vê inativas) |
 | POST / PUT | `/api/categories` · `/:id` | ADMIN |
 | GET | `/api/services` · `/:id` | lava-jato (custos e margens só ADMIN) |
@@ -146,5 +149,23 @@ Depois, em `frontend/js/config.js`, troque a URL de produção pela do Worker (+
 - Bloquear um lava-jato, desativar um usuário ou trocar senha derruba as sessões na hora.
 - Cada lava-jato só enxerga os próprios dados: filtro por `tenant_id` em toda consulta e chaves
   estrangeiras compostas no banco.
-- Auditoria de login, logout, falhas, usuários, permissões e autorizações, gravada na mesma transação
-  da alteração, sem senhas e com IP guardado só como hash.
+- Auditoria de login, logout, falhas, lançamentos, cancelamentos, preços, estoque, usuários, permissões e
+  autorizações, gravada na mesma transação da alteração, sem senhas e com IP guardado só como hash.
+  Telas: **Mais → Auditoria** (administrador do lava-jato) e **Clientes → Auditoria** (administrador do sistema).
+- Sessão: renovada com o uso (7 dias), mas com validade máxima de 30 dias (7 para o administrador do sistema).
+- Limites: 5 tentativas de login por e-mail e 20 por IP a cada 15 min; 3 solicitações de acesso por IP por hora;
+  120 gravações por minuto por usuário.
+- Limpeza diária automática (Cron Trigger) de sessões vencidas e contadores antigos; lançamentos e auditoria nunca são apagados.
+- O app se recusa a rodar dentro de um frame de outro site (proteção contra clickjacking).
+- Dependências sem vulnerabilidades conhecidas (`npm audit`); o Worker publicado não tem dependências de execução.
+
+## Testes
+
+- **API** (`worker/test`): rodam no runtime real dos Workers com D1 local. Cobrem login, permissões,
+  isolamento entre lava-jatos, receitas, despesas, saldo, margem, ponto de equilíbrio, estoque (inclusive
+  concorrência), custos, relatórios, auditoria, valores negativos e gigantes, datas e IDs inválidos,
+  SQL injection, XSS, CORS, limites e acesso direto à API. Também garantem que as consultas principais usam índices.
+- **Ponta a ponta** (`tests/e2e`): fluxo completo em tela de 360px — solicitação de acesso, autorização,
+  cadastros, lançamentos, caixa, cancelamento, análise, auditoria, restrições do operador e ausência de
+  rolagem lateral em todas as telas.
+- O GitHub Actions roda tudo a cada envio.

@@ -1,7 +1,9 @@
 // Ponto de entrada do Worker: CORS, roteamento, autenticação/RBAC e tratamento seguro de erros.
 
 import { ok, fail, errors, ApiError } from './lib/http.js';
-import { corsHeaders, assertOrigin, authenticateTenant, authenticateSystem, requireRole, clientIp, ROLES } from './middleware.js';
+import { corsHeaders, assertOrigin, authenticateTenant, authenticateSystem, requireRole, rateLimit, clientIp, ROLES } from './middleware.js';
+import { listTenantAudit, listSystemAudit } from './audit.js';
+import { cleanup } from './maintenance.js';
 import * as authRoutes from './auth.js';
 import * as users from './users.js';
 import * as system from './system.js';
@@ -38,6 +40,7 @@ const ROUTES = [
   ['POST', '/api/users/:id/password', TENANT, [ADMIN], users.resetUserPassword],
 
   ['GET', '/api/dashboard', TENANT, [], dashboard.getDashboard],
+  ['GET', '/api/audit', TENANT, [ADMIN], listTenantAudit],
 
   ['GET', '/api/reports/financial', TENANT, [ADMIN], reports.financialReport],
   ['GET', '/api/reports/categories', TENANT, [ADMIN], reports.categoriesReport],
@@ -79,6 +82,7 @@ const ROUTES = [
   ['POST', '/api/system/auth/login', PUBLIC, [], authRoutes.systemLogin],
   ['POST', '/api/system/auth/logout', SYSTEM, [], authRoutes.logout],
   ['GET', '/api/system/tenants', SYSTEM, [], system.listTenants],
+  ['GET', '/api/system/audit', SYSTEM, [], listSystemAudit],
   ['POST', '/api/system/tenants/:id/:action', SYSTEM, [], system.changeTenantStatus],
 ].map(([method, path, scope, roles, handler]) => ({
   method,
@@ -88,6 +92,8 @@ const ROUTES = [
   keys: [...path.matchAll(/:(\w+)/g)].map((m) => m[1]),
   pattern: new RegExp(`^${path.replace(/:\w+/g, '([^/]+)')}$`),
 }));
+
+const WRITE_LIMIT_PER_MINUTE = 120;
 
 // Rotas TENANT sem perfis explícitos aceitam os dois perfis de lava-jato.
 const TENANT_ROLES = [ADMIN, OPERADOR];
@@ -128,6 +134,11 @@ async function handle(request, env) {
     auth = await authenticateSystem(request, env);
   }
 
+  // Limite de gravações por usuário: folgado para uso normal, contém scripts abusivos.
+  if (auth && request.method !== 'GET') {
+    await rateLimit(env, `write:${auth.scope}:${auth.userId ?? auth.adminId}`, WRITE_LIMIT_PER_MINUTE, 60);
+  }
+
   return await route.handler({ request, env, url, params, auth, ip: clientIp(request) });
 }
 
@@ -154,5 +165,10 @@ export default {
 
     if (cors) Object.entries(cors).forEach(([key, value]) => response.headers.set(key, value));
     return response;
+  },
+
+  /** Rotina diária (Cron Trigger): remove sessões vencidas e contadores de limite antigos. */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(cleanup(env));
   },
 };

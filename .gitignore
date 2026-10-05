@@ -5,3 +5,5 @@ node_modules/
 *.log
 .DS_Store
 .admin.sql
+test-results/
+playwright-report/

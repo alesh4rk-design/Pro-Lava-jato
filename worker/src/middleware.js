@@ -33,6 +33,9 @@ export function assertOrigin(request, env) {
 /* Sessões -------------------------------------------------------------------- */
 
 export const SESSION_TTL_MS = { tenant: 7 * 24 * 3600_000, system: 12 * 3600_000 };
+// Validade máxima desde o login, mesmo com uso contínuo: obriga a entrar de novo de tempos em tempos.
+export const SESSION_MAX_AGE_MS = { tenant: 30 * 24 * 3600_000, system: 7 * 24 * 3600_000 };
+const maxAgeCutoff = (scope, now) => new Date(now.getTime() - SESSION_MAX_AGE_MS[scope]).toISOString();
 const REFRESH_AFTER_MS = 15 * 60_000;
 
 function bearerToken(request) {
@@ -62,9 +65,9 @@ export async function authenticateTenant(request, env) {
        FROM sessions s
        JOIN users u   ON u.id = s.user_id AND u.tenant_id = s.tenant_id
        JOIN tenants t ON t.id = s.tenant_id
-      WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ?
+      WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND s.created_at > ?
         AND u.active = 1 AND t.status = 'ATIVO'`,
-  ).bind(await sha256Hex(token), now.toISOString()).first();
+  ).bind(await sha256Hex(token), now.toISOString(), maxAgeCutoff('tenant', now)).first();
   if (!row) throw errors.unauthenticated();
 
   await touchSession(env, row, 'tenant', now.getTime());
@@ -87,8 +90,8 @@ export async function authenticateSystem(request, env) {
   const row = await env.DB.prepare(
     `SELECT s.id, s.last_seen_at, a.id AS admin_id, a.name
        FROM sessions s JOIN system_admins a ON a.id = s.system_admin_id
-      WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND a.active = 1`,
-  ).bind(await sha256Hex(token), now.toISOString()).first();
+      WHERE s.token_hash = ? AND s.revoked_at IS NULL AND s.expires_at > ? AND s.created_at > ? AND a.active = 1`,
+  ).bind(await sha256Hex(token), now.toISOString(), maxAgeCutoff('system', now)).first();
   if (!row) throw errors.unauthenticated();
 
   await touchSession(env, row, 'system', now.getTime());

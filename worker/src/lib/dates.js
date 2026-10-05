@@ -66,3 +66,25 @@ export function resolvePeriod(searchParams, timeZone) {
     default: throw errors.validation('Período inválido.');
   }
 }
+
+/** Diferença (ms) entre o horário local do fuso e UTC no instante informado. */
+function tzOffsetMs(timeZone, instantMs) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(new Date(instantMs)).map((p) => [p.type, p.value]));
+  const asUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second));
+  return asUtc - Math.floor(instantMs / 1000) * 1000;
+}
+
+/**
+ * Intervalo UTC [início, fim) que cobre os dias locais de start a end (inclusive).
+ * Usado para filtrar carimbos de tempo (created_at, em UTC) por datas do lava-jato.
+ */
+export function localDaysToUtcRange(start, end, timeZone) {
+  const startGuess = Date.parse(`${start}T00:00:00Z`);
+  const endGuess = Date.parse(`${addDays(end, 1)}T00:00:00Z`);
+  return {
+    from: new Date(startGuess - tzOffsetMs(timeZone, startGuess)).toISOString(),
+    to: new Date(endGuess - tzOffsetMs(timeZone, endGuess)).toISOString(),
+  };
+}

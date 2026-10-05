@@ -658,3 +658,50 @@
   border-radius: 999px;
   background: var(--series-1);
 }
+
+/* Auditoria */
+.audit-list {
+  gap: var(--space-2);
+}
+
+.audit-row {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.audit-row.is-alert {
+  border-left-color: var(--danger);
+}
+
+.audit-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.audit-title {
+  margin-top: var(--space-1);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.audit-detail {
+  overflow-wrap: anywhere;
+}
+
+.back-link {
+  justify-self: start;
+  padding: 0;
+}
+
+.back-link .icon {
+  transform: rotate(180deg);
+}
+
+.page-title .btn {
+  flex: none;
+}

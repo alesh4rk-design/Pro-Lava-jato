@@ -6,6 +6,10 @@ compatibility_date = "2026-01-01"
 [observability]
 enabled = true
 
+# Limpeza diária de sessões vencidas e contadores antigos (06:17 UTC = 03:17 em Brasília).
+[triggers]
+crons = ["17 6 * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "lava-jato-db"

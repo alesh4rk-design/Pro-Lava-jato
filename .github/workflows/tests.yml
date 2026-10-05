@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   frontend:
+    name: unitários do frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,6 +19,7 @@ jobs:
       - run: npm test
 
   worker:
+    name: API (Workers + D1)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,3 +33,27 @@ jobs:
           cache-dependency-path: worker/package-lock.json
       - run: npm ci
       - run: npm test
+
+  e2e:
+    name: ponta a ponta (celular)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            worker/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: worker
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rastros-e2e
+          path: test-results/
+          retention-days: 7

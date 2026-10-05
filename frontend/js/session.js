@@ -1,5 +1,17 @@
 // Sessão local. O token é opaco: quem decide permissões é sempre o Worker.
 
+// Proteção contra clickjacking: o GitHub Pages não permite o cabeçalho frame-ancestors
+// (e ele não funciona em <meta>), então o app se recusa a rodar dentro de um frame de outro site.
+// Este módulo é carregado por todas as páginas.
+if (window.top !== window.self) {
+  document.documentElement.hidden = true;
+  try {
+    window.top.location.replace(window.self.location.href);
+  } catch {
+    // navegador bloqueou a navegação do topo: a página continua oculta
+  }
+}
+
 const KEY = 'lj.session';
 
 export const SCOPE = Object.freeze({ TENANT: 'tenant', SYSTEM: 'system' });
