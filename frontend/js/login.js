@@ -6,6 +6,7 @@ import { getSession, homeFor, SCOPE } from './session.js';
 import { isValidEmail, isStrongPassword } from './format.js';
 import { setBusy, setFieldError, validateFields } from './ui.js';
 import { registerServiceWorker } from './pwa.js';
+import { sendPasswordReset } from './firebase.js';
 
 const MODES = {
   login: {
@@ -42,6 +43,7 @@ function setMode(next) {
   $('request-form').hidden = next !== 'request';
   $('show-request').hidden = next !== 'login';
   $('show-login').hidden = next !== 'request';
+  $('forgot').hidden = next !== 'login';
   $('toggle-system').hidden = next === 'request';
   $('toggle-system').textContent = next === 'system' ? 'Voltar para o login do lava-jato' : 'Entrar como administrador do sistema';
   showAlert('');
@@ -73,6 +75,22 @@ async function onLogin(event) {
   } catch (error) {
     showAlert(error.message);
     $('login-password').value = '';
+    setBusy(button, false);
+  }
+}
+
+/** Esqueci minha senha: o Firebase envia o e-mail com o link para criar outra. Resposta igual exista ou não a conta. */
+async function onForgot() {
+  showAlert('');
+  if (!validate([['login-email', emailRule]])) return;
+  const button = $('forgot');
+  setBusy(button, true);
+  try {
+    await sendPasswordReset($('login-email').value);
+    showAlert('Se este e-mail estiver cadastrado, enviamos um link para criar uma nova senha. Confira também a caixa de spam.', true);
+  } catch (error) {
+    showAlert(error.code === 'EMAIL_NOT_FOUND' ? 'Se este e-mail estiver cadastrado, enviamos um link para criar uma nova senha. Confira também a caixa de spam.' : error.message, error.code === 'EMAIL_NOT_FOUND');
+  } finally {
     setBusy(button, false);
   }
 }
@@ -130,6 +148,7 @@ function init() {
   }
   $('login-form').addEventListener('submit', onLogin);
   $('request-form').addEventListener('submit', onRequest);
+  $('forgot').addEventListener('click', onForgot);
   $('show-request').addEventListener('click', () => setMode('request'));
   $('show-login').addEventListener('click', () => setMode('login'));
   $('toggle-system').addEventListener('click', () => setMode(mode === 'system' ? 'login' : 'system'));

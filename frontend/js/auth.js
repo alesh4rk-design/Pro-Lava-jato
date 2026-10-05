@@ -2,11 +2,14 @@
 
 import { api } from './api.js';
 import { saveSession, clearSession, getSession, SCOPE } from './session.js';
+import { signIn, signUpOrResume } from './firebase.js';
 
 /** Login do lava-jato (scope tenant) ou do administrador do sistema (scope system). */
 export async function login(email, password, scope = SCOPE.TENANT) {
-  const path = scope === SCOPE.SYSTEM ? '/system/auth/login' : '/auth/login';
-  const data = await api.post(path, { email: email.trim().toLowerCase(), password });
+  // Lava-jato: o Firebase confere e-mail e senha e a API só valida o token. Administrador do sistema: senha local.
+  const data = scope === SCOPE.SYSTEM
+    ? await api.post('/system/auth/login', { email: email.trim().toLowerCase(), password })
+    : await api.post('/auth/login', { id_token: await signIn(email, password) });
   const session = { token: data.token, user: data.user, tenant: data.tenant ?? null, scope };
   saveSession(session);
   return session;
@@ -25,12 +28,11 @@ export async function logout() {
 }
 
 /** Novo lava-jato pede acesso; fica PENDENTE até o administrador do sistema autorizar. */
-export function requestAccess({ businessName, ownerName, email, phone, password }) {
+export async function requestAccess({ businessName, ownerName, email, phone, password }) {
   return api.post('/access-requests', {
     business_name: businessName.trim(),
     owner_name: ownerName.trim(),
-    email: email.trim().toLowerCase(),
     phone: phone.trim(),
-    password,
+    id_token: await signUpOrResume(email, password),
   });
 }

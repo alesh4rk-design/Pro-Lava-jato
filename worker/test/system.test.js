@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { call, seedTenant, seedSystemAdmin, systemLogin, login, adminSession, env } from './helpers.js';
+import { call, seedTenant, seedSystemAdmin, systemLogin, login, tokenFor, adminSession, env } from './helpers.js';
 
 async function systemSession() {
   const { email, adminId } = await seedSystemAdmin();
@@ -13,8 +13,8 @@ describe('login do administrador do sistema', () => {
     expect(res.status).toBe(200);
     expect(res.json.data.user.role).toBe('SUPER_ADMIN');
 
-    // A mesma credencial não serve no login de lava-jato.
-    expect((await call('POST', '/api/auth/login', { body: { email, password: 'senha1234' } })).status).toBe(401);
+    // A mesma credencial não serve no login de lava-jato (que só aceita token do Firebase).
+    expect((await call('POST', '/api/auth/login', { body: { email, password: 'senha1234' } })).status).toBe(400);
   });
 
   it('token de lava-jato não acessa rotas do sistema e vice-versa', async () => {
@@ -63,7 +63,7 @@ describe('gestão de lava-jatos', () => {
 
     expect((await call('POST', `/api/system/tenants/${tenant.tenantId}/block`, { token, body: {} })).status).toBe(200);
     expect((await call('GET', '/api/auth/me', { token: tenant.token })).status).toBe(401);
-    const blockedLogin = await call('POST', '/api/auth/login', { body: { email: tenant.email, password: 'senha1234' } });
+    const blockedLogin = await call('POST', '/api/auth/login', { body: { id_token: await tokenFor(tenant.email) } });
     expect(blockedLogin.json.error.code).toBe('ACCESS_BLOCKED');
 
     expect((await call('POST', `/api/system/tenants/${tenant.tenantId}/unblock`, { token, body: {} })).status).toBe(200);

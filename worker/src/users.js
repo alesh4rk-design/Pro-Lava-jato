@@ -2,7 +2,7 @@
 
 import { ok, readJson, errors } from './lib/http.js';
 import * as v from './lib/validate.js';
-import { hashPassword } from './lib/crypto.js';
+import { verifyFirebaseToken } from './lib/firebase.js';
 import { ROLES } from './middleware.js';
 import { auditStatement, actorOf } from './audit.js';
 
@@ -27,21 +27,22 @@ export async function listUsers({ env, auth }) {
 }
 
 export async function createUser({ request, env, auth, ip }) {
-  const body = v.onlyFields(await readJson(request), ['name', 'email', 'password', 'role']);
+  const body = v.onlyFields(await readJson(request), ['name', 'id_token', 'role']);
   const data = {
     name: v.text(body.name, { field: 'o nome', min: 2, max: 80 }),
-    email: v.email(body.email),
-    password: v.newPassword(body.password),
     role: v.oneOf(body.role, Object.values(ROLES), 'perfil'),
   };
 
-  const exists = await env.DB.prepare('SELECT 1 FROM users WHERE email = ?').bind(data.email).first();
+  // A conta (e-mail e senha) foi criada no Firebase pelo navegador do administrador; o token a identifica.
+  const identity = await verifyFirebaseToken(env, body.id_token);
+  data.email = identity.email;
+
+  const exists = await env.DB.prepare('SELECT 1 FROM users WHERE email = ? OR firebase_uid = ?').bind(data.email, identity.uid).first();
   if (exists) throw errors.conflict('Este e-mail já está em uso.');
 
-  const passwordHash = await hashPassword(data.password);
   const created = await env.DB.prepare(
-    `INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?) RETURNING ${PUBLIC_FIELDS}`,
-  ).bind(auth.tenantId, data.name, data.email, passwordHash, data.role).first();
+    `INSERT INTO users (tenant_id, name, email, password_hash, firebase_uid, role) VALUES (?, ?, ?, 'firebase', ?, ?) RETURNING ${PUBLIC_FIELDS}`,
+  ).bind(auth.tenantId, data.name, data.email, identity.uid, data.role).first();
 
   await (await auditStatement(env, {
     tenantId: auth.tenantId, actor: actorOf(auth), action: 'USER_CREATED', entity: 'user', entityId: created.id,
@@ -99,18 +100,13 @@ export async function updateUser({ request, env, auth, params, ip }) {
   return ok(toPublic({ ...user, ...changes }));
 }
 
-export async function resetUserPassword({ request, env, auth, params, ip }) {
+/**
+ * O e-mail de redefinição é enviado pelo Firebase (o navegador chama o Firebase); a senha nunca passa por aqui.
+ * Esta rota confere que o usuário é do lava-jato, registra o pedido na auditoria e devolve o e-mail.
+ */
+export async function resetUserPassword({ env, auth, params, ip }) {
   const user = await findUser(env, auth, params.id);
   if (user.id === auth.userId) throw errors.invalidState('Para trocar a sua senha, use "Minha conta".');
-  const body = v.onlyFields(await readJson(request), ['password']);
-  const password = v.newPassword(body.password);
-
-  const now = new Date().toISOString();
-  await env.DB.batch([
-    env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ? AND tenant_id = ?')
-      .bind(await hashPassword(password), now, user.id, auth.tenantId),
-    revokeSessions(env, user.id, now),
-    await auditStatement(env, { tenantId: auth.tenantId, actor: actorOf(auth), action: 'PASSWORD_RESET', entity: 'user', entityId: user.id, ip }),
-  ]);
-  return ok({});
+  await (await auditStatement(env, { tenantId: auth.tenantId, actor: actorOf(auth), action: 'PASSWORD_RESET', entity: 'user', entityId: user.id, ip })).run();
+  return ok({ email: user.email });
 }

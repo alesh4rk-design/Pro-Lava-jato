@@ -3,7 +3,7 @@
 Sistema web (PWA) de controle financeiro para lava-jatos, feito para uso no celular.
 
 ```
-GitHub Pages (frontend estático, sem segredos)
+GitHub Pages (frontend estático, sem segredos) ──► Firebase Authentication (e-mail, senha, "Esqueci minha senha")
       │ HTTPS + Bearer token
 Cloudflare Worker (API: CORS → rate limit → autenticação → RBAC → validação → regra de negócio → auditoria)
       │
@@ -60,14 +60,14 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 
 | Método | Rota | Acesso |
 |---|---|---|
-| POST | `/api/auth/login` | público (limite de tentativas) |
+| POST | `/api/auth/login` | público (recebe o token do Firebase; limite por IP) |
 | POST | `/api/auth/logout` | lava-jato |
 | GET | `/api/auth/me` | lava-jato |
-| POST | `/api/auth/password` | lava-jato |
+| POST | `/api/auth/password` | lava-jato (confirma a troca feita no Firebase) |
 | POST | `/api/access-requests` | público (limite por IP) |
 | GET / POST | `/api/users` | ADMIN |
 | PUT | `/api/users/:id` | ADMIN |
-| POST | `/api/users/:id/password` | ADMIN |
+| POST | `/api/users/:id/password` | ADMIN (audita e devolve o e-mail; o envio é do Firebase) |
 | GET | `/api/dashboard?period=` | lava-jato |
 | GET | `/api/reports/financial` · `categories` · `services` · `break-even` | ADMIN |
 | GET | `/api/audit?period=&group=&user_id=` | ADMIN (auditoria do lava-jato) |
@@ -126,6 +126,7 @@ npx wrangler login
 npx wrangler d1 create lava-jato-db          # copie o database_id para wrangler.toml
 npx wrangler d1 migrations apply lava-jato-db --remote
 npx wrangler secret put IP_HASH_SALT         # cole um texto aleatório longo
+# antes do deploy: FIREBASE_PROJECT_ID em wrangler.toml (docs/PUBLICACAO.md, Parte 1B)
 npm run deploy                               # anote a URL *.workers.dev
 
 npm run create-system-admin                  # cria o SEU acesso (senha não aparece na tela)
@@ -150,7 +151,8 @@ Depois, em `frontend/js/config.js`, troque a URL de produção pela do Worker (+
 - Toda validação feita no cliente é repetida no Worker; a interface só esconde, quem bloqueia é a API.
 - Dinheiro em centavos (inteiros) para evitar erros de ponto flutuante.
 - O service worker nunca armazena respostas da API.
-- Senhas com PBKDF2-SHA256 (100 mil iterações, salt aleatório); do token de sessão, só o hash vai ao banco.
+- Senhas dos lava-jatos ficam no **Firebase Authentication** (nunca passam pelo Worker nem pelo banco); o Worker só confere a assinatura do token (RS256, chaves públicas do Google, emissor, público e validade). O administrador do sistema usa senha local (PBKDF2-SHA256, 100 mil iterações). Do token de sessão, só o hash vai ao banco.
+- Redefinição de senha: o próprio cliente usa "Esqueci minha senha" (e-mail do Firebase); sem códigos de recuperação e sem depender do administrador do sistema.
 - Bloquear um lava-jato, desativar um usuário ou trocar senha derruba as sessões na hora.
 - Cada lava-jato só enxerga os próprios dados: filtro por `tenant_id` em toda consulta e chaves
   estrangeiras compostas no banco.
@@ -158,7 +160,7 @@ Depois, em `frontend/js/config.js`, troque a URL de produção pela do Worker (+
   autorizações, gravada na mesma transação da alteração, sem senhas e com IP guardado só como hash.
   Telas: **Mais → Auditoria** (administrador do lava-jato) e **Clientes → Auditoria** (administrador do sistema).
 - Sessão: renovada com o uso (7 dias), mas com validade máxima de 30 dias (7 para o administrador do sistema).
-- Limites: 5 tentativas de login por e-mail e 20 por IP a cada 15 min; 3 solicitações de acesso por IP por hora;
+- Limites: tentativas de senha limitadas pelo Firebase e 30 logins por IP a cada 15 min (5 por e-mail no login do administrador do sistema); 3 solicitações de acesso por IP por hora;
   120 gravações por minuto por usuário.
 - Limpeza diária automática (Cron Trigger) de sessões vencidas e contadores antigos; lançamentos e auditoria nunca são apagados.
 - O app se recusa a rodar dentro de um frame de outro site (proteção contra clickjacking).
@@ -170,7 +172,7 @@ Depois, em `frontend/js/config.js`, troque a URL de produção pela do Worker (+
   isolamento entre lava-jatos, receitas, despesas, saldo, margem, ponto de equilíbrio, estoque (inclusive
   concorrência), custos, relatórios, auditoria, valores negativos e gigantes, datas e IDs inválidos,
   SQL injection, XSS, CORS, limites e acesso direto à API. Também garantem que as consultas principais usam índices.
-- **Ponta a ponta** (`tests/e2e`): fluxo completo em tela de 360px — solicitação de acesso, autorização,
+- **Ponta a ponta** (`tests/e2e`, com um Firebase falso que imita a API e assina tokens): fluxo completo em tela de 360px — solicitação de acesso, autorização,
   cadastros, lançamentos, caixa, cancelamento, análise, auditoria, restrições do operador e ausência de
   rolagem lateral em todas as telas.
 - O GitHub Actions roda tudo a cada envio.

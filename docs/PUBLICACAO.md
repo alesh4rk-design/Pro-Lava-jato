@@ -1,10 +1,10 @@
 # Guia de publicação (passo a passo)
 
-Este guia coloca o sistema no ar usando só serviços **gratuitos**: o **GitHub Pages** hospeda as telas e a **Cloudflare** hospeda a API e o banco de dados.
+Este guia coloca o sistema no ar usando só serviços **gratuitos**: o **GitHub Pages** hospeda as telas, a **Cloudflare** hospeda a API e o banco de dados e o **Firebase** guarda e-mail e senha dos usuários (e envia o e-mail de "Esqueci minha senha").
 Tempo estimado: 30 a 40 minutos, na primeira vez.
 
 Você vai precisar de:
-- uma conta no **GitHub** (você já tem) e uma conta gratuita na **Cloudflare**;
+- uma conta no **GitHub** (você já tem), uma conta gratuita na **Cloudflare** e uma conta Google para o **Firebase**;
 - um computador com o **Node.js 22** instalado (https://nodejs.org, versão LTS) e o **Git**.
 
 > O celular serve para **usar** o sistema. Para publicar, use um computador.
@@ -20,6 +20,24 @@ Você vai precisar de:
    O endereço será parecido com `https://alesh4rk-design.github.io/Pro-Lava-jato/`.
 
 Neste ponto as telas já abrem, mas ainda **não funcionam**: falta a API (Parte 2).
+
+---
+
+## Parte 1B — Criar o projeto no Firebase (login e "Esqueci minha senha")
+
+O Firebase cuida das senhas dos lava-jatos: o cliente cria e redefine a própria senha sozinho, por e-mail, sem depender de você. O plano gratuito (**Spark**) é suficiente. Seu acesso de administrador do sistema **não** usa o Firebase.
+
+1. Abra https://console.firebase.google.com e entre com sua conta Google.
+2. **Criar projeto** → dê um nome (ex.: `lava-jato-gestao`) → pode desativar o Google Analytics → **Criar projeto**.
+3. No menu da esquerda: **Build (Criação) → Authentication → Vamos começar → E-mail/senha** → ative **E-mail/senha** (a opção "Link do e-mail" fica desativada) → **Salvar**.
+4. Ainda em Authentication, aba **Settings (Configurações) → Authorized domains (Domínios autorizados) → Adicionar domínio**: `alesh4rk-design.github.io`.
+5. (Recomendado) aba **Templates → Redefinição de senha** → lápis → idioma **Português (Brasil)** → Salvar.
+6. Anote duas informações públicas (não são segredos):
+   - **ID do projeto**: engrenagem ⚙ → **Configurações do projeto → Geral** → "ID do projeto".
+   - **Chave de API da Web**: na mesma tela, "Chave de API da Web" (se não aparecer, clique em **Adicionar app → Web `</>`**, dê um apelido e registre; a chave aparece no código mostrado).
+7. Coloque o **ID do projeto** em `worker/wrangler.toml` (`FIREBASE_PROJECT_ID`) e a **chave de API** em `frontend/js/config.js` (`FIREBASE_API_KEY`). Depois rode `npm run deploy` na pasta `worker` e salve o `config.js` no GitHub.
+
+> A chave de API da Web do Firebase é pública por definição (todo site que usa Firebase a exibe). Quem protege a conta é a senha, não a chave. Para reforçar, no Google Cloud (APIs e serviços → Credenciais) você pode restringir essa chave ao site `https://alesh4rk-design.github.io/*`.
 
 ---
 
@@ -99,7 +117,7 @@ O primeiro comando pergunta nome, e-mail e senha (a senha **não aparece** na te
 2. Toque em **"Entrar como administrador do sistema"** e entre com o acesso criado na etapa 2.6.
 3. Para cadastrar o primeiro lava-jato: saia, volte à tela de login, toque em **"Solicitar acesso"**, preencha os dados do lava-jato e envie.
 4. Entre de novo como administrador do sistema, abra **Clientes → Pendentes** e toque em **Autorizar**.
-5. O responsável entra com o e-mail e a senha que cadastrou, vai em **Mais → Serviços** e **Mais → Produtos e estoque** para cadastrar o básico, e em **Mais → Usuários** para criar quem faz os lançamentos do dia.
+5. O responsável entra com o e-mail e a senha que cadastrou (se esquecer, usa **Esqueci minha senha** na tela de login e recebe o e-mail do Firebase), vai em **Mais → Serviços** e **Mais → Produtos e estoque** para cadastrar o básico, e em **Mais → Usuários** para criar quem faz os lançamentos do dia.
 
 ### Instalar como aplicativo
 - **Android (Chrome):** menu ⋮ → **Instalar aplicativo** (ou **Adicionar à tela inicial**).
@@ -107,14 +125,13 @@ O primeiro comando pergunta nome, e-mail e senha (a senha **não aparece** na te
 
 ---
 
-> **Ponto de atenção no primeiro login:** o login faz um cálculo de senha mais pesado que as demais telas. Ele funcionou nos testes, mas o limite de processamento do plano gratuito só pode ser confirmado na Cloudflare de verdade. Por isso, **faça o primeiro login logo depois de publicar** e, se der erro, veja a última linha da tabela "Se algo der errado".
-
 ## Checklist de teste no celular
 
 Faça com o celular de verdade, de preferência com internet móvel:
 
 - [ ] A tela de login abre e o app pode ser instalado na tela inicial.
 - [ ] **Solicitar acesso** funciona e o lava-jato aparece em **Clientes → Pendentes**.
+- [ ] **Esqueci minha senha** envia o e-mail (veja também o spam) e o link permite criar outra senha.
 - [ ] Autorizar libera o login; **Bloquear** derruba o acesso na hora.
 - [ ] Lançar uma receita leva poucos toques e aparece no **Caixa** e no **Início**.
 - [ ] Lançar uma despesa com categoria e forma de pagamento.
@@ -134,10 +151,13 @@ Faça com o celular de verdade, de preferência com internet móvel:
 | A tela de login mostra "Sem conexão com o servidor" | Confira o endereço em `frontend/js/config.js` (termina em `/api`) e abra `.../api/health` no navegador. |
 | Erro de CORS no console / "Forbidden" ao entrar | O endereço do GitHub Pages precisa estar em `ALLOWED_ORIGINS` (`worker/wrangler.toml`). Depois rode `npm run deploy`. |
 | A tela não atualiza depois de mudar o código | Feche e abra o app. O aviso **"Nova versão disponível"** aparece e basta tocar em **Atualizar**. |
-| Entrar dá erro 500 ou "Worker exceeded CPU time limit" (erro 1102) no painel da Cloudflare | A verificação de senha é propositalmente pesada (é o que protege as senhas) e o plano gratuito limita o processamento por requisição. **Avise o Claude**: as saídas são reduzir o custo do cálculo da senha (um pouco menos de proteção contra quebra de senha) ou assinar o plano pago do Workers (cerca de US$ 5 por mês). Não altere nada por conta própria. |
+| Entrar mostra "O login por e-mail e senha não está ativado no Firebase" | Ative **E-mail/senha** em Authentication (Parte 1B, passo 3). |
+| Entrar/solicitar acesso dá erro de domínio não autorizado ou `API key not valid` | Confira o domínio autorizado (passo 4) e a chave de API em `frontend/js/config.js`. |
+| Entrar com a senha certa dá "E-mail ou senha inválidos" e o Firebase aceitou | O `FIREBASE_PROJECT_ID` em `worker/wrangler.toml` não é o do seu projeto: corrija e rode `npm run deploy`. |
+| Não chega o e-mail de "Esqueci minha senha" | Veja o spam. O Firebase limita o envio por dia no plano gratuito; tente de novo mais tarde. |
 | Esqueci a senha de administrador do sistema | Rode de novo `npm run create-system-admin` e o `d1 execute` da etapa 2.6 com o mesmo e-mail: a senha é redefinida. |
 | `npm run deploy` pede login | Rode `npx wrangler login` de novo. |
 
 ## Custos e limites (plano gratuito)
 
-O uso de um lava-jato fica muito abaixo dos limites gratuitos da Cloudflare (100 mil requisições por dia no Workers, 5 GB no D1). Se um dia o volume crescer muito, a Cloudflare avisa antes de cobrar qualquer coisa.
+O uso de um lava-jato fica muito abaixo dos limites gratuitos da Cloudflare (100 mil requisições por dia no Workers, 5 GB no D1) e do Firebase Authentication (plano Spark). Se um dia o volume crescer muito, a Cloudflare avisa antes de cobrar qualquer coisa.

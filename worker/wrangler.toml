@@ -22,6 +22,8 @@ migrations_dir = "migrations"
 ALLOWED_ORIGINS = "https://alesh4rk-design.github.io"
 # Fuso usado para "hoje", períodos e validação de datas.
 TIMEZONE = "America/Sao_Paulo"
+# Projeto do Firebase Authentication (identificador público; veja docs/PUBLICACAO.md).
+FIREBASE_PROJECT_ID = "SEU-PROJETO-FIREBASE"
 
 # Segredo exigido em produção (definir com `npx wrangler secret put IP_HASH_SALT`):
 #   IP_HASH_SALT  texto aleatório longo, usado para guardar IPs apenas como hash na auditoria
