@@ -53,6 +53,13 @@
   padding: var(--space-4) var(--space-4) calc(var(--nav-h) + var(--safe-bottom) + var(--space-6));
 }
 
+/* Itens de grid não podem crescer além da tela por causa de conteúdo largo (tabelas, gráficos). */
+.page > *,
+.section > *,
+.card {
+  min-width: 0;
+}
+
 .page-no-nav {
   padding-bottom: calc(var(--space-6) + var(--safe-bottom));
 }
@@ -535,4 +542,119 @@
 
 .cost-row .btn-icon {
   width: 40px;
+}
+
+/* Análise */
+.chart-box {
+  position: relative;
+}
+
+.chart-canvas {
+  position: relative;
+  width: 100%;
+  height: 220px;
+}
+
+.table-view {
+  margin-top: var(--space-3);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.data-table th,
+.data-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-list {
+  margin-top: var(--space-3);
+}
+
+.rank-list .list-row > span:first-child {
+  min-width: 0;
+}
+
+.rank-value {
+  display: grid;
+  justify-items: end;
+  flex: none;
+}
+
+.be-progress {
+  height: 12px;
+  margin-top: var(--space-3);
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.be-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--series-1);
+}
+
+.be-progress-fill.is-reached {
+  background: var(--success);
+}
+
+.be-status {
+  margin-top: var(--space-2);
+  font-weight: 700;
+}
+
+.be-status.is-ok {
+  color: var(--success);
+}
+
+.be-reason {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.share-row {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.share-row:last-child {
+  border-bottom: 0;
+}
+
+.share-row .list-row {
+  min-height: 0;
+  border: 0;
+  padding: 0 0 var(--space-1);
+}
+
+.share-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.share-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--series-1);
 }

@@ -12,6 +12,7 @@ import * as revenues from './revenues.js';
 import * as expenses from './expenses.js';
 import * as cash from './cash.js';
 import * as dashboard from './dashboard.js';
+import * as reports from './reports.js';
 
 const { ADMIN, OPERADOR } = ROLES;
 const PUBLIC = null;
@@ -37,6 +38,11 @@ const ROUTES = [
   ['POST', '/api/users/:id/password', TENANT, [ADMIN], users.resetUserPassword],
 
   ['GET', '/api/dashboard', TENANT, [], dashboard.getDashboard],
+
+  ['GET', '/api/reports/financial', TENANT, [ADMIN], reports.financialReport],
+  ['GET', '/api/reports/categories', TENANT, [ADMIN], reports.categoriesReport],
+  ['GET', '/api/reports/services', TENANT, [ADMIN], reports.servicesReport],
+  ['GET', '/api/reports/break-even', TENANT, [ADMIN], reports.breakEvenReport],
 
   ['GET', '/api/categories', TENANT, [], categories.listCategories],
   ['POST', '/api/categories', TENANT, [ADMIN], categories.createCategory],

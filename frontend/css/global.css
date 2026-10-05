@@ -23,6 +23,10 @@
   --warning-soft: #fdeed9;
 
   --focus: #1d8fe0;
+
+  /* Séries de gráfico (paleta categórica validada para daltonismo e contraste) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
   --shadow: 0 1px 2px rgb(15 27 36 / 6%), 0 4px 14px rgb(15 27 36 / 6%);
   --shadow-lg: 0 10px 40px rgb(15 27 36 / 22%);
 
@@ -74,6 +78,9 @@
     --danger-soft: #3b1714;
     --warning: #f5b25c;
     --warning-soft: #3a2810;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
 
     --shadow: 0 1px 2px rgb(0 0 0 / 40%);
     --shadow-lg: 0 10px 40px rgb(0 0 0 / 60%);

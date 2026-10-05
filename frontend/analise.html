@@ -13,16 +13,16 @@
   <link rel="stylesheet" href="css/global.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/mobile.css">
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/analise.js"></script>
 </head>
 <body data-page="analise" data-scope="tenant">
   <main class="page">
-    <div class="page-title"><h1>Análise</h1></div>
-    <div class="card state">
-      <div class="state-icon"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#inbox"></use></svg></div>
-      <h3>Relatórios em construção</h3>
-      <p class="muted">Gráficos, relatórios por categoria e serviço e o ponto de equilíbrio chegam na Etapa 5.</p>
+    <div class="page-title">
+      <h1>Análise</h1>
+      <span class="badge badge-primary" id="period-label"></span>
     </div>
+    <div class="chips" role="group" aria-label="Período" id="period-chips"></div>
+    <div id="analysis" class="section" aria-live="polite"></div>
   </main>
 </body>
 </html>

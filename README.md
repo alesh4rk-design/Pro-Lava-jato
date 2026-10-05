@@ -27,7 +27,7 @@ Um novo lava-jato usa **"Solicitar acesso"** na tela de login, informando o pró
 - [x] **Etapa 2:** D1, Worker, API, autenticação, sessões, RBAC, usuários e painel do administrador do sistema
 - [x] **Etapa 3:** receitas, despesas, categorias, caixa e dashboard com dados reais
 - [x] **Etapa 4:** produtos, estoque, custo médio, serviços e custo estimado por serviço
-- [ ] Etapa 5: dashboard real, relatórios, gráficos, ponto de equilíbrio
+- [x] **Etapa 5:** relatórios (financeiro, categorias, serviços, formas de pagamento), gráficos e ponto de equilíbrio
 - [ ] Etapa 6: auditoria, segurança, performance, testes
 - [ ] Etapa 7: deploy final e testes em celular
 
@@ -68,6 +68,7 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | PUT | `/api/users/:id` | ADMIN |
 | POST | `/api/users/:id/password` | ADMIN |
 | GET | `/api/dashboard?period=` | lava-jato |
+| GET | `/api/reports/financial` · `categories` · `services` · `break-even` | ADMIN |
 | GET | `/api/categories?kind=` | lava-jato (ADMIN vê inativas) |
 | POST / PUT | `/api/categories` · `/:id` | ADMIN |
 | GET | `/api/services` · `/:id` | lava-jato (custos e margens só ADMIN) |
@@ -100,6 +101,17 @@ Períodos: `period=today|7d|month|last_month|year` ou `period=custom&start=AAAA-
 - Consumo e ajuste usam o custo médio atual; o estoque nunca fica negativo (baixa condicional na transação).
 - Custo do serviço = consumo de produtos × custo médio + valores rateados. É uma **estimativa**;
   a receita guarda o custo estimado do momento da venda.
+
+**Ponto de equilíbrio**
+- Ponto de equilíbrio = despesas fixas (fixas + outras) ÷ margem de contribuição.
+- Margem de contribuição = (faturamento − custos variáveis) ÷ faturamento. Os custos variáveis são o
+  **custo estimado dos serviços vendidos** (consumo, não a data da compra); sem composição de custo
+  cadastrada, usa os custos variáveis lançados no caixa. A tela informa qual base foi usada.
+- Cálculo em inteiros (BigInt): sem erro de arredondamento mesmo com valores altos.
+
+**Gráficos**: Chart.js 4.5.1 (MIT) salvo em `frontend/js/vendor/`, carregado só na tela Análise.
+Paleta validada para daltonismo e contraste nos temas claro e escuro; cada gráfico tem versão em tabela.
+
 As permissões de cada rota ficam numa única tabela em `worker/src/index.js`.
 
 ### Primeiro deploy da API
