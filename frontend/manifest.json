@@ -4,20 +4,89 @@
   "short_name": "LJ Gestão",
   "description": "Controle financeiro do lava-jato: receitas, despesas, caixa e resultado.",
   "lang": "pt-BR",
-  "start_url": "./index.html",
+  "start_url": "./index.html?origem=app",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a6e7d",
   "theme_color": "#0a6e7d",
-  "categories": ["finance", "business", "productivity"],
+  "categories": [
+    "finance",
+    "business",
+    "productivity"
+  ],
   "icons": [
-    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Lançar", "url": "./lancamento.html", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Caixa", "url": "./caixa.html", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] }
+    {
+      "name": "Lançar",
+      "url": "./lancamento.html",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Caixa",
+      "url": "./caixa.html",
+      "icons": [
+        {
+          "src": "assets/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "screenshots": [
+    {
+      "src": "assets/screenshots/inicio.png",
+      "sizes": "540x960",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Início: resultado do dia e do mês"
+    },
+    {
+      "src": "assets/screenshots/caixa.png",
+      "sizes": "540x960",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Caixa: entradas, saídas e saldo"
+    },
+    {
+      "src": "assets/screenshots/inicio-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Início no computador"
+    }
   ]
 }
