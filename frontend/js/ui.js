@@ -153,24 +153,24 @@ export function field({ id, label, hint, ...inputAttrs }) {
  */
 export function chipGroup({ label, options, value, onChange }) {
   let current = value;
-  const buttons = options.map((opt) => el('button', {
-    class: 'chip',
-    type: 'button',
-    'aria-pressed': String(opt.value === current),
-    onclick: () => {
-      current = opt.value;
-      buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(options[i].value === current)));
-      onChange?.(opt);
-    },
-  }, opt.label, opt.hint ? el('small', { class: 'chip-hint' }, opt.hint) : null));
-  const element = el('div', { class: 'chips chips-wrap', role: 'group', 'aria-label': label }, buttons);
+  let items = options;
+  const element = el('div', { class: 'chips chips-wrap', role: 'group', 'aria-label': label });
+  const paint = () => [...element.children].forEach((b, i) => b.setAttribute('aria-pressed', String(items[i].value === current)));
+  const render = () => {
+    element.replaceChildren(...items.map((opt) => el('button', {
+      class: 'chip',
+      type: 'button',
+      'aria-pressed': String(opt.value === current),
+      onclick: () => { current = opt.value; paint(); onChange?.(opt); },
+    }, opt.label, opt.hint ? el('small', { class: 'chip-hint' }, opt.hint) : null)));
+  };
+  render();
   return {
     element,
     get value() { return current; },
-    set value(v) {
-      current = v;
-      buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(options[i].value === current)));
-    },
+    set value(v) { current = v; paint(); },
+    /** Troca as opções (ex.: depois de criar uma categoria) e seleciona `selected`. */
+    setOptions(next, selected = current) { items = next; current = selected; render(); },
   };
 }
 

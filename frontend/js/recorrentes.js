@@ -7,6 +7,7 @@ import { formatCents, formatDate, parseMoneyToCents, centsToInput, isValidISODat
 import { el, icon, field, chipGroup, toast, openModal, stateView, runBusy, setFieldError, editChip } from './ui.js';
 import { PAYMENT_LABELS, EXPENSE_TYPE_LABELS, sectionLabel } from './entry-form.js';
 import { getCategories } from './catalog.js';
+import { newCategoryButton } from './categoria-rapida.js';
 import { FREQUENCY_LABELS, WEEKDAYS, scheduleText } from './recorrentes-text.js';
 
 const list = document.getElementById('recurring-list');
@@ -17,10 +18,6 @@ async function openForm(rec = null) {
     categories = await getCategories('DESPESA');
   } catch (error) {
     toast(error.message, { type: 'error' });
-    return;
-  }
-  if (!categories.length) {
-    toast('Cadastre uma categoria de despesa antes (Mais → Categorias).', { type: 'error' });
     return;
   }
   const today = todayISO(config.TIMEZONE);
@@ -38,6 +35,10 @@ async function openForm(rec = null) {
     value: rec?.category_id ?? null,
   });
   const categoryError = el('span', { class: 'field-error' });
+  const addCategory = newCategoryButton((created, all) => {
+    category.setOptions(all.map((c) => ({ value: c.id, label: c.name, type: c.default_expense_type })), created.id);
+    categoryError.textContent = '';
+  });
   const payment = chipGroup({ label: 'Forma de pagamento', options: Object.entries(PAYMENT_LABELS).map(([value, label]) => ({ value, label })), value: rec?.payment_method ?? 'PIX' });
   const type = chipGroup({ label: 'Tipo', options: Object.entries(EXPENSE_TYPE_LABELS).map(([value, label]) => ({ value, label })), value: rec?.type ?? 'DESPESA_FIXA' });
 
@@ -60,7 +61,7 @@ async function openForm(rec = null) {
   const form = el('form', { class: 'form', novalidate: true },
     amountField,
     description,
-    el('div', { class: 'field' }, sectionLabel('Categoria'), category.element, categoryError),
+    el('div', { class: 'field' }, sectionLabel('Categoria'), category.element, addCategory, categoryError),
     el('div', { class: 'field' }, sectionLabel('Repete'), frequency.element),
     weekdayBox,
     monthDay,

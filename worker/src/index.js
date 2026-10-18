@@ -17,6 +17,7 @@ import * as dashboard from './dashboard.js';
 import * as reports from './reports.js';
 import * as settings from './settings.js';
 import * as recurring from './recurring.js';
+import * as customers from './customers.js';
 
 const { ADMIN, OPERADOR } = ROLES;
 const PUBLIC = null;
@@ -41,6 +42,14 @@ const ROUTES = [
   ['POST', '/api/users', TENANT, [ADMIN], users.createUser],
   ['PUT', '/api/users/:id', TENANT, [ADMIN], users.updateUser],
   ['POST', '/api/users/:id/password', TENANT, [ADMIN], users.resetUserPassword],
+
+  ['GET', '/api/customers', TENANT, [], customers.listCustomers],
+  ['POST', '/api/customers', TENANT, [], customers.createCustomer],
+  ['PUT', '/api/customers/:id', TENANT, [], customers.updateCustomer],
+  ['POST', '/api/customers/:id/contact', TENANT, [], customers.registerContact],
+  ['GET', '/api/message-templates', TENANT, [], customers.listTemplates],
+  ['POST', '/api/message-templates', TENANT, [ADMIN], customers.createTemplate],
+  ['PUT', '/api/message-templates/:id', TENANT, [ADMIN], customers.updateTemplate],
 
   ['GET', '/api/recurring-expenses', TENANT, [ADMIN], recurring.listRecurring],
   ['GET', '/api/recurring-expenses/upcoming', TENANT, [ADMIN], recurring.upcomingRecurring],

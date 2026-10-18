@@ -883,3 +883,19 @@ body.install-open { padding-bottom: 170px; }
 .due-alert-list li.is-soon .due-when { color: var(--warning); font-weight: 700; }
 
 .due-alert-more { font-size: var(--fs-xs); font-weight: 700; }
+
+/* Clientes e mensagens prontas */
+.customer-card.is-inactive { opacity: 0.7; }
+.customer-notes { font-style: italic; overflow-wrap: anywhere; }
+.message-body { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+.message-preview {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--success-soft);
+  color: var(--text);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.category-box { display: grid; gap: var(--space-2); }
+.field > .btn-sm { justify-self: start; }
