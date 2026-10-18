@@ -64,6 +64,7 @@ export async function openEntryDetail(kind, id, { isAdmin, onChanged }) {
       row('Descrição', entry.description),
       row('Observação', entry.notes),
       row('Custo estimado', entry.service_cost_snapshot_cents ? formatCents(entry.service_cost_snapshot_cents) : null),
+      row('Origem', entry.recurring_expense_id ? 'Despesa recorrente (lançamento automático)' : null),
       row('Lançado por', entry.user_name),
       row('Registrado em', formatDateTime(entry.created_at, config.TIMEZONE)),
       active ? null : row('Cancelado por', entry.cancelled_by_name),

@@ -13,7 +13,7 @@ const ledger = {
   label: 'Despesa',
   select: `SELECT e.id, e.date, e.category_id, c.name AS category_name, e.type, e.description, e.amount_cents,
                   e.payment_method, e.notes, e.status, e.cancel_reason, e.cancelled_at, cu.name AS cancelled_by_name,
-                  u.name AS user_name, e.created_at, e.updated_at
+                  u.name AS user_name, e.recurring_expense_id, e.created_at, e.updated_at
              FROM expenses e
              JOIN users u ON u.id = e.user_id
              JOIN categories c ON c.tenant_id = e.tenant_id AND c.id = e.category_id

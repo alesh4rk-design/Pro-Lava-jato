@@ -84,6 +84,9 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET / POST | `/api/revenues` · `/api/expenses` | lava-jato (lançar: ADMIN e OPERADOR) |
 | GET | `/api/revenues/:id` · `/api/expenses/:id` | lava-jato |
 | PUT / DELETE | `/api/revenues/:id` · `/api/expenses/:id` | ADMIN (DELETE = cancelar) |
+| GET / POST | `/api/recurring-expenses` | ADMIN (lista; cria despesa recorrente) |
+| PUT | `/api/recurring-expenses/:id` | ADMIN (editar, pausar, retomar) |
+| GET | `/api/recurring-expenses/upcoming?days=` | ADMIN (próximos vencimentos, alimenta o aviso do Início) |
 | GET | `/api/cash?period=` · `/api/cash/entries` | lava-jato |
 | POST | `/api/system/auth/login` · `/logout` | administrador do sistema |
 | GET | `/api/system/tenants?status=` | administrador do sistema |
@@ -99,6 +102,12 @@ Períodos: `period=today|7d|month|last_month|year` ou `period=custom&start=AAAA-
 - Serviços = receitas ligadas a um serviço. Ticket médio = faturamento ÷ número de receitas.
 - Lançamentos não são apagados: cancelar guarda quem, quando e o motivo, e o valor sai dos totais.
 - Datas de lançamento não podem ser futuras; "hoje" segue o fuso `TIMEZONE` (America/Sao_Paulo).
+
+**Despesas recorrentes** (Mais → Despesas recorrentes, só administrador)
+- Frequência diária, semanal (dia da semana) ou mensal (dia 1 a 31; 31 vale como último dia do mês).
+- O sistema lança a despesa sozinho em cada vencimento: Cron diário (03:17 em Brasília) e ao abrir o app. Cada lançamento é uma despesa comum, que pode ser editada ou cancelada no Caixa; cancelar não faz o lançamento voltar.
+- Nunca lança a mesma data duas vezes (nem com execuções simultâneas). Pausar não acumula: ao retomar, segue de hoje.
+- O Início mostra um aviso com os vencimentos dos próximos 7 dias (destaque para hoje e amanhã); as diárias ficam fora do aviso.
 
 **Estoque e custos**
 - Quantidades na menor unidade (ml, g, un); custo médio em micro-reais por unidade (R$ 17,00/L = 17.000 µR/ml).

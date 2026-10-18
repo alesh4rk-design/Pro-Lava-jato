@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { scheduleText, whenText } from '../frontend/js/recorrentes-text.js';
 import {
   formatCents, parseMoneyToCents, centsToInput, formatQty, parseQty, formatUnitCost, formatBasisPoints, isValidISODate, formatDate, formatDateTime, formatPhone, todayISO, isValidEmail, MAX_CENTS,
 } from '../frontend/js/format.js';
@@ -134,4 +135,13 @@ test('formatUnitCost (R$ 85 por 5 L = R$ 17/L)', () => {
   assert.equal(formatUnitCost(17000, 'ML'), 'R$\u00a017,00/L');
   assert.equal(formatUnitCost(25000, 'G'), 'R$\u00a025,00/kg');
   assert.equal(formatUnitCost(1_500_000, 'UN'), 'R$\u00a01,50/un');
+});
+
+
+test('textos das despesas recorrentes', () => {
+  assert.equal(scheduleText({ frequency: 'DIARIA' }), 'Todo dia');
+  assert.equal(scheduleText({ frequency: 'SEMANAL', weekday: 1 }), 'Toda segunda');
+  assert.equal(scheduleText({ frequency: 'MENSAL', month_day: 5 }), 'Todo dia 5');
+  assert.equal(scheduleText({ frequency: 'MENSAL', month_day: 31 }), 'Todo último dia do mês');
+  assert.deepEqual([0, 1, 2, 7].map(whenText), ['hoje', 'amanhã', 'em 2 dias', 'em 7 dias']);
 });

@@ -5,6 +5,7 @@ import { api } from './api.js';
 import { formatCents, formatBasisPoints, formatInteger, formatDate } from './format.js';
 import { el, icon, stateView } from './ui.js';
 import { periodPicker } from './periods.js';
+import { whenText } from './recorrentes-text.js';
 
 const content = document.getElementById('dash-content');
 const label = document.getElementById('period-label');
@@ -111,9 +112,37 @@ async function loadStockAlert() {
   }
 }
 
+/** Aviso de próximos vencimentos das despesas recorrentes (7 dias). Só para o administrador. */
+async function loadDueAlert() {
+  if (session.user.role !== 'ADMIN') return;
+  try {
+    const { items, total_cents: total } = await api.get('/recurring-expenses/upcoming?days=7');
+    const box = document.getElementById('due-alert');
+    if (!items.length) return;
+    const urgent = items.some((i) => i.days_left <= 1);
+    box.classList.toggle('is-urgent', urgent);
+    box.replaceChildren(...[
+      el('a', { class: 'due-alert-head', href: 'recorrentes.html' },
+        icon('calendar', 'icon icon-sm'),
+        el('strong', {}, urgent ? 'Vencimentos para hoje ou amanhã' : 'Próximos vencimentos'),
+        icon('chevron-right', 'icon icon-sm')),
+      el('ul', { class: 'due-alert-list' }, items.slice(0, 4).map((i) => el('li', { class: i.days_left <= 1 ? 'is-soon' : '' },
+        el('span', { class: 'due-name' }, i.description || i.category_name),
+        el('span', { class: 'due-when' }, `${whenText(i.days_left)} · ${formatDate(i.next_date).slice(0, 5)}`),
+        el('strong', { class: 'num due-amount' }, formatCents(i.amount_cents))))),
+      el('a', { class: 'due-alert-more', href: 'recorrentes.html' },
+        items.length > 4 ? `Ver mais ${items.length - 4} · total da semana ${formatCents(total)}` : `Total dos próximos 7 dias: ${formatCents(total)}`),
+    ]);
+    box.hidden = false;
+  } catch {
+    // aviso complementar: falha aqui não atrapalha o dashboard
+  }
+}
+
 function init() {
   if (!session) return;
   loadStockAlert();
+  loadDueAlert();
   periodPicker({
     container: document.getElementById('period-chips'),
     storageKey: 'lj.dashboard.period',

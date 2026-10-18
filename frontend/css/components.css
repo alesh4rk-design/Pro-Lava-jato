@@ -813,3 +813,73 @@ body.install-open { padding-bottom: 170px; }
 .list-row .btn-sm { flex: none; margin-left: var(--space-2); }
 
 .tenant-edit { justify-self: start; margin-left: calc(var(--space-3) * -1); }
+
+/* Despesas recorrentes e aviso de vencimentos */
+.menu-badge {
+  margin-left: auto;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.menu-badge + .chevron { margin-left: var(--space-2); }
+
+.recurring-card { padding: var(--space-3); }
+
+.recurring-main {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recurring-main .tenant-actions { align-items: center; }
+
+.due-alert {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.due-alert.is-urgent { background: var(--warning-soft); border-color: var(--warning); }
+
+.due-alert-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--warning);
+  text-decoration: none;
+}
+
+.due-alert-head strong { flex: 1; }
+
+.due-alert-list { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
+
+.due-alert-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name amount" "when amount";
+  column-gap: var(--space-3);
+  align-items: center;
+  font-size: var(--fs-sm);
+}
+
+.due-name { grid-area: name; overflow-wrap: anywhere; font-weight: 600; }
+.due-when { grid-area: when; color: var(--text-muted); font-size: var(--fs-xs); }
+.due-amount { grid-area: amount; }
+.due-alert-list li.is-soon .due-when { color: var(--warning); font-weight: 700; }
+
+.due-alert-more { font-size: var(--fs-xs); font-weight: 700; }

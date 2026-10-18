@@ -16,6 +16,7 @@ import * as cash from './cash.js';
 import * as dashboard from './dashboard.js';
 import * as reports from './reports.js';
 import * as settings from './settings.js';
+import * as recurring from './recurring.js';
 
 const { ADMIN, OPERADOR } = ROLES;
 const PUBLIC = null;
@@ -40,6 +41,11 @@ const ROUTES = [
   ['POST', '/api/users', TENANT, [ADMIN], users.createUser],
   ['PUT', '/api/users/:id', TENANT, [ADMIN], users.updateUser],
   ['POST', '/api/users/:id/password', TENANT, [ADMIN], users.resetUserPassword],
+
+  ['GET', '/api/recurring-expenses', TENANT, [ADMIN], recurring.listRecurring],
+  ['GET', '/api/recurring-expenses/upcoming', TENANT, [ADMIN], recurring.upcomingRecurring],
+  ['POST', '/api/recurring-expenses', TENANT, [ADMIN], recurring.createRecurring],
+  ['PUT', '/api/recurring-expenses/:id', TENANT, [ADMIN], recurring.updateRecurring],
 
   ['GET', '/api/dashboard', TENANT, [], dashboard.getDashboard],
   ['GET', '/api/audit', TENANT, [ADMIN], listTenantAudit],
@@ -172,8 +178,8 @@ export default {
     return response;
   },
 
-  /** Rotina diária (Cron Trigger): remove sessões vencidas e contadores de limite antigos. */
+  /** Rotina diária (Cron Trigger): lança despesas recorrentes e remove sessões vencidas e contadores antigos. */
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(cleanup(env));
+    ctx.waitUntil(Promise.all([cleanup(env), recurring.generateDue(env)]));
   },
 };
