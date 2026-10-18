@@ -14,9 +14,9 @@ import { setupInstall, canInstall, promptInstall, onInstallAvailability } from '
 
 const NAV = [
   { page: 'dashboard', href: 'dashboard.html', label: 'Início', icon: 'home' },
-  { page: 'caixa', href: 'caixa.html', label: 'Caixa', icon: 'wallet' },
+  { page: 'caixa', href: 'caixa.html', label: 'Caixa', icon: 'wallet', roles: ['ADMIN'] },
   { page: 'lancamento', href: 'lancamento.html', label: 'Lançar', icon: 'plus', main: true },
-  { page: 'analise', href: 'analise.html', label: 'Análise', icon: 'chart' },
+  { page: 'analise', href: 'analise.html', label: 'Análise', icon: 'chart', roles: ['ADMIN'] },
   { page: 'mais', href: 'mais.html', label: 'Mais', icon: 'menu' },
 ];
 
@@ -151,9 +151,11 @@ function openChangePassword() {
   });
 }
 
-function renderNav(current) {
-  const nav = el('nav', { class: 'bottom-nav', 'aria-label': 'Navegação principal' },
-    NAV.map((item) => el('a', {
+/** O operador só tem Início, Lançar e Mais: caixa e análise são do administrador. */
+function renderNav(current, role) {
+  const items = NAV.filter((item) => !item.roles || item.roles.includes(role));
+  const nav = el('nav', { class: `bottom-nav${items.length < NAV.length ? ' is-compact' : ''}`, 'aria-label': 'Navegação principal' },
+    items.map((item) => el('a', {
       class: `nav-item${item.main ? ' nav-item-main' : ''}`,
       href: item.href,
       'aria-current': item.page === current ? 'page' : false,
@@ -199,7 +201,7 @@ function boot() {
   const session = guard();
   if (!session) return null;
   renderHeader(session);
-  if (session.scope === SCOPE.TENANT) renderNav(document.body.dataset.page);
+  if (session.scope === SCOPE.TENANT) renderNav(document.body.dataset.page, session.user.role);
   applyRoleVisibility(session.user.role);
   watchConnection();
   setupInstall();

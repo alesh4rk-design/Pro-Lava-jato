@@ -17,7 +17,7 @@ describe('caixa', () => {
     await call('DELETE', `/api/revenues/${cancelled.id}`, { token: f.adminToken });
     await post(f, '/api/expenses', { category_id: f.categoryId, amount_cents: 2500, payment_method: 'PIX' });
 
-    const res = await call('GET', '/api/cash?period=today', { token: f.opToken });
+    const res = await call('GET', '/api/cash?period=today', { token: f.adminToken });
     expect(res.status).toBe(200);
     expect(res.json.data.totals).toEqual({ in_cents: 11000, out_cents: 2500, balance_cents: 8500 });
     const pix = res.json.data.by_method.find((m) => m.method === 'PIX');
@@ -39,20 +39,20 @@ describe('caixa', () => {
     const out = await post(f, '/api/expenses', { category_id: f.categoryId, amount_cents: 2500, payment_method: 'DINHEIRO' });
     await call('DELETE', `/api/expenses/${out.id}`, { token: f.adminToken });
 
-    const all = await call('GET', '/api/cash/entries?period=today', { token: f.opToken });
+    const all = await call('GET', '/api/cash/entries?period=today', { token: f.adminToken });
     expect(all.json.data.items.map((i) => i.kind)).toEqual(['IN']);
 
-    const withCancelled = await call('GET', '/api/cash/entries?period=today&include_cancelled=1', { token: f.opToken });
+    const withCancelled = await call('GET', '/api/cash/entries?period=today&include_cancelled=1', { token: f.adminToken });
     expect(withCancelled.json.data.items).toHaveLength(2);
 
-    const onlyOut = await call('GET', '/api/cash/entries?period=today&kind=OUT&include_cancelled=1', { token: f.opToken });
+    const onlyOut = await call('GET', '/api/cash/entries?period=today&kind=OUT&include_cancelled=1', { token: f.adminToken });
     expect(onlyOut.json.data.items.map((i) => i.kind)).toEqual(['OUT']);
 
-    const search = await call('GET', `/api/cash/entries?period=today&q=${tag}`, { token: f.opToken });
+    const search = await call('GET', `/api/cash/entries?period=today&q=${tag}`, { token: f.adminToken });
     expect(search.json.data.items).toHaveLength(1);
     expect(search.json.data.items[0].ref_name).toBeTruthy();
 
-    expect((await call('GET', '/api/cash/entries?kind=TUDO', { token: f.opToken })).status).toBe(400);
+    expect((await call('GET', '/api/cash/entries?kind=TUDO', { token: f.adminToken })).status).toBe(400);
   });
 
   it('respeita o período', async () => {
@@ -75,7 +75,7 @@ describe('dashboard', () => {
     await post(f, '/api/expenses', { category_id: f.categoryId, amount_cents: 4000, payment_method: 'PIX' });
     await post(f, '/api/expenses', { category_id: f.categoryId, type: 'OUTRA', amount_cents: 500, payment_method: 'PIX' });
 
-    const res = await call('GET', '/api/dashboard?period=today', { token: f.opToken });
+    const res = await call('GET', '/api/dashboard?period=today', { token: f.adminToken });
     expect(res.status).toBe(200);
     expect(res.json.data.totals).toEqual({
       revenue_cents: 10000,

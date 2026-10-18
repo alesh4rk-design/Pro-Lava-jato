@@ -10,7 +10,7 @@
 
 import { ok, readJson, errors } from './lib/http.js';
 import * as v from './lib/validate.js';
-import { entryDate, resolvePeriod } from './lib/dates.js';
+import { entryDate, resolvePeriod, today } from './lib/dates.js';
 import { auditStatement, actorOf, LAST_INSERT_ID } from './audit.js';
 
 export const PAYMENT_METHODS = ['PIX', 'DINHEIRO', 'DEBITO', 'CREDITO', 'OUTRO'];
@@ -49,7 +49,14 @@ export async function findEntry(ledger, env, auth, idParam) {
 }
 
 export async function getEntry(ledger, { env, auth, params }) {
-  return ok(present(ledger, auth, await findEntry(ledger, env, auth, params.id)));
+  const entry = await findEntry(ledger, env, auth, params.id);
+  if (auth.role !== 'ADMIN') {
+    // Operador: só o lançamento que ele mesmo fez, no dia de hoje. Qualquer outro responde "não encontrado".
+    const own = await env.DB.prepare(`SELECT 1 FROM ${ledger.table} WHERE tenant_id = ? AND id = ? AND user_id = ? AND date = ?`)
+      .bind(auth.tenantId, entry.id, auth.userId, today(timeZone(env))).first();
+    if (!own) throw errors.notFound(`${ledger.label} não encontrada.`);
+  }
+  return ok(present(ledger, auth, entry));
 }
 
 export async function listEntries(ledger, { env, auth, url }) {
