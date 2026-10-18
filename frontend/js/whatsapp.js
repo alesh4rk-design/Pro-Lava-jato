@@ -14,20 +14,29 @@ export function vehicleText({ vehicle = '', plate = '' } = {}) {
   return [vehicle.trim(), plate.trim()].filter(Boolean).join(' · ');
 }
 
+export const PIX_MISSING = '[cadastre a chave PIX em Configurações]';
+
+/** {pix}: a chave e, se houver, o nome do recebedor. Sem chave cadastrada, um aviso visível no texto (que é editável). */
+export function pixText({ key = '', holder = '' } = {}) {
+  if (!key) return PIX_MISSING;
+  return holder.trim() ? `${key}\nRecebedor: ${holder.trim()}` : key;
+}
+
 /**
- * Troca {nome}, {veiculo}, {placa} e {lavajato} pelos dados. Campo vazio some sem deixar espaços sobrando.
+ * Troca {nome}, {veiculo}, {placa}, {lavajato} e {pix} pelos dados. Campo vazio some sem deixar espaços sobrando.
  * O veículo entra entre parênteses quando existir: "do seu veículo (Gol · ABC1D23)".
  */
-export function renderMessage(body, customer, businessName = '') {
+export function renderMessage(body, customer, businessName = '', pix = {}) {
   const vehicle = vehicleText(customer);
   const values = {
     nome: (customer.name ?? '').trim(),
     veiculo: vehicle ? `(${vehicle})` : '',
     placa: (customer.plate ?? '').trim(),
     lavajato: businessName.trim(),
+    pix: pixText(pix),
   };
   return body
-    .replace(/\{(nome|veiculo|placa|lavajato)\}/g, (_, key) => values[key])
+    .replace(/\{(nome|veiculo|placa|lavajato|pix)\}/g, (_, key) => values[key])
     .replace(/[ \t]+/g, ' ')
     .replace(/ +([,.!?;:])/g, '$1')
     .replace(/— *$/gm, '')

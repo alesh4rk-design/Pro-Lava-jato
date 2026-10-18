@@ -402,20 +402,20 @@ test('clientes e mensagens prontas para WhatsApp', async () => {
 
   // O administrador edita uma mensagem pronta e cria outra, com prévia
   await owner.click('#tabs [data-tab="mensagens"]');
-  await expect(owner.locator('#template-list .card')).toHaveCount(5);
+  await expect(owner.locator('#template-list .card')).toHaveCount(6);
   await owner.click('#new-item');
   await owner.fill('#t-title', 'Aviso de horário');
   await owner.fill('#t-body', 'Olá, {nome}! Hoje fechamos às 18h.');
   await expect(owner.locator('.message-preview')).toHaveText('Olá, Carlos Silva! Hoje fechamos às 18h.');
   await owner.click('dialog .btn-primary');
-  await expect(owner.locator('#template-list .card')).toHaveCount(6);
+  await expect(owner.locator('#template-list .card')).toHaveCount(7);
 
   // Operador cadastra e envia, mas não gerencia as mensagens
   await operator.goto('clientes.html');
   await expect(operator.locator('#tabs [data-tab="mensagens"]')).toBeHidden();
   await expect(operator.locator('.customer-card', { hasText: 'João da Silva' })).toBeVisible();
   await operator.locator('.customer-card', { hasText: 'João da Silva' }).locator('button:has-text("WhatsApp")').click();
-  await expect(operator.locator('dialog [aria-label="Mensagens prontas"] .chip')).toHaveCount(6);
+  await expect(operator.locator('dialog [aria-label="Mensagens prontas"] .chip')).toHaveCount(7);
   await operator.click('dialog button:has-text("Cancelar")');
 
   // Auditoria registra sem telefone
@@ -423,6 +423,67 @@ test('clientes e mensagens prontas para WhatsApp', async () => {
   await expect(owner.locator('.audit-row', { hasText: 'Abriu o WhatsApp para João da Silva' })).toContainText('Veículo pronto');
   await expect(owner.locator('#audit-list')).not.toContainText('977665544');
   expect(await noHorizontalScroll(owner), 'auditoria').toBe(true);
+});
+
+test('chave PIX: cadastro em Configurações e mensagem pronta com a chave', async () => {
+  // Sem chave cadastrada, a mensagem avisa e não deixa enviar sem escrever a chave
+  await owner.goto('clientes.html');
+  await owner.evaluate(() => { window.__opened = []; window.open = (url) => { window.__opened.push(url); return null; }; });
+  await owner.locator('.customer-card', { hasText: 'João da Silva' }).locator('button:has-text("WhatsApp")').click();
+  await owner.click('dialog .chip:has-text("Chave PIX")');
+  await expect(owner.locator('#send-text')).toHaveValue(/\[cadastre a chave PIX em Configurações\]/);
+  await expect(owner.locator('.pix-warning')).toBeVisible();
+  await owner.click('dialog .btn-success');
+  await expect(lastToast(owner)).toContainText('chave PIX ainda não foi cadastrada');
+  expect(await owner.evaluate(() => window.__opened.length)).toBe(0);
+  await owner.click('dialog button:has-text("Cancelar")');
+
+  // Cadastro com validação
+  await owner.goto('configuracoes.html');
+  await expect(owner.locator('.pix-status')).toContainText('Nenhuma chave cadastrada');
+  await owner.fill('#pix-key', '123.456.789-00');
+  await owner.click('#pix-save');
+  await expect(owner.locator('#pix-key-error')).toContainText('CPF incorreto');
+  await owner.fill('#pix-key', '529.982.247-25');
+  await owner.fill('#pix-holder', 'Brilho Central Ltda');
+  await owner.click('#pix-save');
+  await expect(lastToast(owner)).toContainText('Chave PIX salva');
+  await expect(owner.locator('.pix-status')).toContainText('529.982.247-25');
+
+  // A mensagem agora leva a chave e o recebedor; o operador também usa
+  await owner.goto('clientes.html');
+  await owner.evaluate(() => { window.__opened = []; window.open = (url) => { window.__opened.push(url); return null; }; });
+  await owner.locator('.customer-card', { hasText: 'João da Silva' }).locator('button:has-text("WhatsApp")').click();
+  await owner.click('dialog .chip:has-text("Chave PIX")');
+  await expect(owner.locator('#send-text')).toHaveValue(/52998224725\nRecebedor: Brilho Central Ltda/);
+  await owner.click('dialog .btn-success');
+  const sent = new URL(await owner.evaluate(() => window.__opened[0]));
+  expect(sent.searchParams.get('text')).toContain('52998224725');
+  await operator.goto('clientes.html');
+  await operator.locator('.customer-card', { hasText: 'João da Silva' }).locator('button:has-text("WhatsApp")').click();
+  await operator.click('dialog .chip:has-text("Chave PIX")');
+  await expect(operator.locator('#send-text')).toHaveValue(/52998224725/);
+  await operator.click('dialog button:has-text("Cancelar")');
+
+  // Trocar pede confirmação; a auditoria guarda só o final da chave
+  await owner.goto('configuracoes.html');
+  await owner.click('[aria-label="Tipo da chave"] .chip:has-text("E-mail")');
+  await owner.fill('#pix-key', 'Pagar@Brilho.com.br');
+  await owner.click('#pix-save');
+  await expect(owner.locator('dialog[open]')).toContainText('Trocar a chave PIX?');
+  await owner.click('dialog .btn-primary');
+  await expect(owner.locator('.pix-status')).toContainText('pagar@brilho.com.br');
+  await owner.goto('auditoria.html');
+  await expect(owner.locator('.audit-row', { hasText: 'chave PIX' }).first()).toContainText('••••');
+  await expect(owner.locator('#audit-list')).not.toContainText('52998224725');
+  await expect(owner.locator('#audit-list')).not.toContainText('pagar@brilho.com.br');
+
+  // Remover a chave
+  await owner.goto('configuracoes.html');
+  await owner.click('#pix-remove');
+  await owner.click('dialog .btn-danger');
+  await expect(owner.locator('.pix-status')).toContainText('Nenhuma chave cadastrada');
+  expect(await noHorizontalScroll(owner), 'configurações').toBe(true);
 });
 
 test('telas novas não rolam para o lado em 360px', async () => {

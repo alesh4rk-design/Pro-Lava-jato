@@ -174,3 +174,40 @@ test('whatsappUrl: só dígitos no número e texto codificado (sem injetar parâ
   assert.equal(whatsappUrl('abc', 'oi'), '');
   assert.equal(new URL(url).host, 'wa.me');
 });
+
+import { isValidCpf, isValidCnpj, pixError, formatPixKey } from '../frontend/js/pix.js';
+import { PIX_MISSING, pixText } from '../frontend/js/whatsapp.js';
+
+test('chave PIX: CPF, CNPJ e demais tipos', () => {
+  assert.equal(isValidCpf('52998224725'), true);
+  assert.equal(isValidCpf('52998224726'), false);
+  assert.equal(isValidCpf('11111111111'), false);
+  assert.equal(isValidCnpj('11222333000181'), true);
+  assert.equal(isValidCnpj('11222333000182'), false);
+  assert.equal(pixError('CPF', '529.982.247-25'), null);
+  assert.match(pixError('CPF', '123'), /CPF incorreto/);
+  assert.equal(pixError('CNPJ', '11.222.333/0001-81'), null);
+  assert.equal(pixError('EMAIL', 'pagar@brilho.com.br'), null);
+  assert.match(pixError('EMAIL', 'sem arroba'), /inválido/);
+  assert.equal(pixError('TELEFONE', '(11) 98888-7777'), null);
+  assert.equal(pixError('TELEFONE', '+55 11 98888-7777'), null);
+  assert.match(pixError('TELEFONE', '12345'), /inválido/);
+  assert.equal(pixError('ALEATORIA', '123e4567-e89b-12d3-a456-426614174000'), null);
+  assert.match(pixError('ALEATORIA', 'xyz'), /inválida/);
+  assert.match(pixError('CPF', ''), /Informe/);
+  assert.match(pixError('X', 'abc'), /tipo/);
+  assert.equal(formatPixKey('CPF', '52998224725'), '529.982.247-25');
+  assert.equal(formatPixKey('CNPJ', '11222333000181'), '11.222.333/0001-81');
+  assert.equal(formatPixKey('TELEFONE', '+5511988887777'), '(11) 98888-7777');
+  assert.equal(formatPixKey('EMAIL', 'a@b.com'), 'a@b.com');
+});
+
+test('mensagem com {pix}: chave, recebedor e aviso quando falta cadastrar', () => {
+  const body = 'Olá, {nome}! Chave PIX do {lavajato}:\n\n{pix}\n\nObrigado!';
+  const customer = { name: 'Ana' };
+  assert.equal(renderMessage(body, customer, 'Brilho', { key: '52998224725', holder: 'Brilho Car' }),
+    'Olá, Ana! Chave PIX do Brilho:\n\n52998224725\nRecebedor: Brilho Car\n\nObrigado!');
+  assert.equal(renderMessage(body, customer, 'Brilho', { key: 'pagar@x.com' }), 'Olá, Ana! Chave PIX do Brilho:\n\npagar@x.com\n\nObrigado!');
+  assert.ok(renderMessage(body, customer, 'Brilho').includes(PIX_MISSING));
+  assert.equal(pixText({ key: '', holder: 'X' }), PIX_MISSING);
+});

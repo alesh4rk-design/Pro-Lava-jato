@@ -4,13 +4,14 @@ import { formatCents, formatDate } from './format.js';
 import { PAYMENT_LABELS, EXPENSE_TYPE_LABELS } from './entry-form.js';
 
 const ROLE = { ADMIN: 'Administrador', OPERADOR: 'Operador' };
+const PIX_TYPES = { CPF: 'CPF', CNPJ: 'CNPJ', EMAIL: 'e-mail', TELEFONE: 'telefone', ALEATORIA: 'aleatória' };
 const FREQ = { DIARIA: 'diária', SEMANAL: 'semanal', MENSAL: 'mensal' };
 const MOVEMENT = { ENTRADA: 'compra', SAIDA: 'consumo', AJUSTE: 'ajuste de estoque' };
 
 const FIELD_LABELS = {
   amount_cents: 'valor', payment_method: 'pagamento', date: 'data', description: 'descrição', notes: 'observação',
   service_id: 'serviço', category_id: 'categoria', type: 'tipo', name: 'nome', role: 'perfil', active: 'situação',
-  price_cents: 'preço', frequency: 'frequência', weekday: 'dia da semana', month_day: 'dia do mês', end_date: 'data final', business_name: 'nome do lava-jato', phone: 'telefone', min_stock_qty: 'estoque mínimo', default_expense_type: 'tipo padrão',
+  price_cents: 'preço', pix_key: 'chave PIX', pix_key_type: 'tipo da chave PIX', pix_holder: 'recebedor do PIX', frequency: 'frequência', weekday: 'dia da semana', month_day: 'dia do mês', end_date: 'data final', business_name: 'nome do lava-jato', phone: 'telefone', min_stock_qty: 'estoque mínimo', default_expense_type: 'tipo padrão',
 };
 
 function fieldValue(field, value) {
@@ -20,6 +21,7 @@ function fieldValue(field, value) {
   if (field === 'date') return formatDate(value);
   if (field === 'type' || field === 'default_expense_type') return EXPENSE_TYPE_LABELS[value] ?? value;
   if (field === 'role') return ROLE[value] ?? value;
+  if (field === 'pix_key_type') return PIX_TYPES[value] ?? (value || '—');
   if (field === 'frequency') return FREQ[value] ?? value;
   if (field === 'end_date') return formatDate(value);
   if (field === 'active') return value === true || value === 1 ? 'ativo' : 'inativo';

@@ -116,7 +116,8 @@ Períodos: `period=today|7d|month|last_month|year` ou `period=custom&start=AAAA-
 
 **Clientes e WhatsApp** (Mais → Clientes e mensagens; administrador e operador)
 - Cadastro de clientes com nome, telefone (com DDD), veículo, placa e observação; busca por nome, telefone, placa ou veículo; desativar esconde sem apagar.
-- Mensagens prontas (por lava-jato; já vêm 5, como "Veículo pronto" e "Agradecimento"); só o administrador cria e edita. Campos: `{nome}`, `{veiculo}`, `{placa}`, `{lavajato}`.
+- Mensagens prontas (por lava-jato; já vêm 6, como "Veículo pronto", "Agradecimento" e "Chave PIX"); só o administrador cria e edita. Campos: `{nome}`, `{veiculo}`, `{placa}`, `{lavajato}` e `{pix}`.
+- **Chave PIX** (Mais → Configurações, só administrador): tipo (CPF, CNPJ, e-mail, telefone ou aleatória), chave e nome do recebedor. CPF e CNPJ têm os dígitos conferidos. A mensagem "Chave PIX" leva a chave (e o recebedor); sem chave cadastrada, o texto avisa e o envio é bloqueado. Trocar a chave pede confirmação e a auditoria guarda só o final dela (`••••4725`). O operador usa a chave nas mensagens, mas não a altera.
 - "WhatsApp" abre o `wa.me` com o texto preenchido; a pessoa confere e toca em enviar. Nenhuma mensagem passa pelo servidor nem é enviada sozinha.
 - O telefone e as observações dos clientes ficam fora da auditoria; ela registra só o nome e a mensagem usada.
 - Administradores criam categorias de despesa na hora do lançamento ("+ Nova categoria").
