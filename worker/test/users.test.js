@@ -105,25 +105,27 @@ describe('alteração de usuários', () => {
     expect((await call('GET', '/api/auth/me', { token: opToken })).status).toBe(401);
   });
 
-  it('mudança de perfil é auditada como alteração de permissão', async () => {
+  it('ninguém é promovido a administrador nem rebaixado: o perfil não muda', async () => {
     const admin = await adminSession();
     const op = await seedUser(admin.tenantId);
-    await call('PUT', `/api/users/${op.userId}`, { token: admin.token, body: { role: 'ADMIN' } });
-    const log = await env.DB.prepare("SELECT details FROM audit_logs WHERE action = 'PERMISSION_CHANGED' AND entity_id = ?").bind(op.userId).first();
-    expect(JSON.parse(log.details).before.role).toBe('OPERADOR');
+    for (const body of [{ role: 'ADMIN' }, { role: 'OPERADOR' }, { name: 'Novo Nome', role: 'ADMIN' }]) {
+      expect((await call('PUT', `/api/users/${op.userId}`, { token: admin.token, body })).status, JSON.stringify(body)).toBe(400);
+    }
+    expect((await call('PUT', `/api/users/${admin.userId}`, { token: admin.token, body: { role: 'OPERADOR' } })).status).toBe(400);
+    const roles = await env.DB.prepare('SELECT id, role FROM users WHERE tenant_id = ? ORDER BY id').bind(admin.tenantId).all();
+    expect(roles.results.map((r) => r.role)).toEqual(['ADMIN', 'OPERADOR']);
   });
 
-  it('admin não pode rebaixar nem desativar a si mesmo', async () => {
+  it('admin não pode desativar a si mesmo, mas pode mudar o próprio nome', async () => {
     const { token, userId } = await adminSession();
-    expect((await call('PUT', `/api/users/${userId}`, { token, body: { role: 'OPERADOR' } })).status).toBe(409);
     expect((await call('PUT', `/api/users/${userId}`, { token, body: { active: false } })).status).toBe(409);
     expect((await call('PUT', `/api/users/${userId}`, { token, body: { name: 'Novo Nome' } })).status).toBe(200);
   });
 
-  it('mantém pelo menos um administrador ativo', async () => {
+  it('mantém pelo menos um administrador ativo (cadastros antigos com dois administradores)', async () => {
     const admin = await adminSession();
     const second = await seedUser(admin.tenantId, { role: 'ADMIN' });
-    expect((await call('PUT', `/api/users/${second.userId}`, { token: admin.token, body: { role: 'OPERADOR' } })).status).toBe(200);
+    expect((await call('PUT', `/api/users/${second.userId}`, { token: admin.token, body: { active: false } })).status).toBe(200);
   });
 
   it('rejeita IDs malformados e inexistentes', async () => {
@@ -143,5 +145,67 @@ describe('alteração de usuários', () => {
     const log = await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_logs WHERE action = 'PASSWORD_RESET' AND entity_id = ?").bind(op.userId).first();
     expect(log.n).toBe(1);
     expect((await call('POST', `/api/users/${admin.userId}/password`, { token: admin.token, body: {} })).status).toBe(409);
+  });
+});
+
+describe('só operadores, no máximo 2 por lava-jato', () => {
+  const create = async (token, overrides = {}) => call('POST', '/api/users', { token, body: (await newUser(overrides)).body });
+
+  it('recusa cadastrar administrador, com mensagem clara', async () => {
+    const { token } = await adminSession();
+    const res = await create(token, { role: 'ADMIN' });
+    expect(res.status).toBe(400);
+    expect(res.json.error.message).toBe('Só é possível cadastrar operadores.');
+    expect((await create(token, { role: 'OPERADOR' })).status).toBe(201);
+    const sem = await call('POST', '/api/users', { token, body: { name: 'Sem Perfil', id_token: (await newFirebaseAccount()).idToken } });
+    expect(sem.status).toBe(201);
+    expect(sem.json.data.role).toBe('OPERADOR'); // sem perfil informado, é operador
+  });
+
+  it('o terceiro operador é recusado; desativar um libera a vaga', async () => {
+    const admin = await adminSession();
+    const first = await create(admin.token);
+    const second = await create(admin.token);
+    expect([first.status, second.status]).toEqual([201, 201]);
+
+    const third = await create(admin.token);
+    expect(third.status).toBe(409);
+    expect(third.json.error.message).toContain('Limite de 2 operadores');
+    const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM users WHERE tenant_id = ? AND role = 'OPERADOR'").bind(admin.tenantId).first();
+    expect(count.n).toBe(2);
+
+    expect((await call('PUT', `/api/users/${first.json.data.id}`, { token: admin.token, body: { active: false } })).status).toBe(200);
+    expect((await create(admin.token)).status).toBe(201);
+  });
+
+  it('reativar operador também respeita o limite', async () => {
+    const admin = await adminSession();
+    const first = await create(admin.token);
+    await call('PUT', `/api/users/${first.json.data.id}`, { token: admin.token, body: { active: false } });
+    await create(admin.token);
+    await create(admin.token);
+    const back = await call('PUT', `/api/users/${first.json.data.id}`, { token: admin.token, body: { active: true } });
+    expect(back.status).toBe(409);
+    const row = await env.DB.prepare('SELECT active FROM users WHERE id = ?').bind(first.json.data.id).first();
+    expect(row.active).toBe(0);
+    const logs = await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_logs WHERE action = 'USER_UPDATED' AND entity_id = ? AND details LIKE '%\"active\":1%'").bind(first.json.data.id).first();
+    expect(logs.n).toBe(0); // a tentativa recusada não deixa auditoria de reativação
+  });
+
+  it('cadastros ao mesmo tempo não passam do limite', async () => {
+    const admin = await adminSession();
+    const results = await Promise.all([1, 2, 3, 4].map(() => create(admin.token)));
+    expect(results.filter((r) => r.status === 201)).toHaveLength(2);
+    expect(results.filter((r) => r.status === 409)).toHaveLength(2);
+  });
+
+  it('a lista informa o limite e quantos operadores estão ativos; cada lava-jato conta o seu', async () => {
+    const a = await adminSession();
+    const b = await adminSession();
+    await create(a.token);
+    await create(a.token);
+    expect((await call('GET', '/api/users', { token: a.token })).json.data.limits).toEqual({ operators_max: 2, operators_active: 2 });
+    expect((await call('GET', '/api/users', { token: b.token })).json.data.limits).toEqual({ operators_max: 2, operators_active: 0 });
+    expect((await create(b.token)).status).toBe(201); // o limite de A não atrapalha B
   });
 });

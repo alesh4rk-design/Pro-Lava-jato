@@ -3,8 +3,13 @@
 import { ok, readJson, errors } from './lib/http.js';
 import * as v from './lib/validate.js';
 import { verifyFirebaseToken } from './lib/firebase.js';
-import { ROLES } from './middleware.js';
 import { auditStatement, actorOf } from './audit.js';
+
+// Regra do negócio: o administrador é quem pediu o acesso e ninguém é promovido a administrador.
+// Cada lava-jato pode ter no máximo 2 operadores ativos (desativar um libera a vaga).
+export const MAX_OPERATORS = 2;
+const LIMIT_MESSAGE = `Limite de ${MAX_OPERATORS} operadores atingido. Desative um operador para cadastrar ou reativar outro.`;
+const ACTIVE_OPERATORS = "(SELECT COUNT(*) FROM users WHERE tenant_id = ?1 AND role = 'OPERADOR' AND active = 1)";
 
 const PUBLIC_FIELDS = 'id, name, email, role, active, last_login_at, created_at';
 const toPublic = (row) => ({ ...row, active: row.active === 1 });
@@ -23,15 +28,16 @@ export async function listUsers({ env, auth }) {
   const { results } = await env.DB.prepare(
     `SELECT ${PUBLIC_FIELDS} FROM users WHERE tenant_id = ? ORDER BY active DESC, name COLLATE NOCASE LIMIT 200`,
   ).bind(auth.tenantId).all();
-  return ok({ items: results.map(toPublic) });
+  const items = results.map(toPublic);
+  const active = items.filter((u) => u.role === 'OPERADOR' && u.active).length;
+  return ok({ items, limits: { operators_max: MAX_OPERATORS, operators_active: active } });
 }
 
 export async function createUser({ request, env, auth, ip }) {
+  // Só operador: quem quiser outro administrador não existe neste sistema (perfil "ADMIN" é recusado).
   const body = v.onlyFields(await readJson(request), ['name', 'id_token', 'role']);
-  const data = {
-    name: v.text(body.name, { field: 'o nome', min: 2, max: 80 }),
-    role: v.oneOf(body.role, Object.values(ROLES), 'perfil'),
-  };
+  if (body.role !== undefined && body.role !== 'OPERADOR') throw errors.validation('Só é possível cadastrar operadores.');
+  const data = { name: v.text(body.name, { field: 'o nome', min: 2, max: 80 }), role: 'OPERADOR' };
 
   // A conta (e-mail e senha) foi criada no Firebase pelo navegador do administrador; o token a identifica.
   const identity = await verifyFirebaseToken(env, body.id_token);
@@ -40,9 +46,13 @@ export async function createUser({ request, env, auth, ip }) {
   const exists = await env.DB.prepare('SELECT 1 FROM users WHERE email = ? OR firebase_uid = ?').bind(data.email, identity.uid).first();
   if (exists) throw errors.conflict('Este e-mail já está em uso.');
 
+  // O limite é conferido dentro do próprio INSERT: dois cadastros ao mesmo tempo não passam de 2 operadores.
   const created = await env.DB.prepare(
-    `INSERT INTO users (tenant_id, name, email, password_hash, firebase_uid, role) VALUES (?, ?, ?, 'firebase', ?, ?) RETURNING ${PUBLIC_FIELDS}`,
-  ).bind(auth.tenantId, data.name, data.email, identity.uid, data.role).first();
+    `INSERT INTO users (tenant_id, name, email, password_hash, firebase_uid, role)
+     SELECT ?1, ?2, ?3, 'firebase', ?4, 'OPERADOR' WHERE ${ACTIVE_OPERATORS} < ${MAX_OPERATORS}
+     RETURNING ${PUBLIC_FIELDS}`,
+  ).bind(auth.tenantId, data.name, data.email, identity.uid).first();
+  if (!created) throw errors.conflict(LIMIT_MESSAGE);
 
   await (await auditStatement(env, {
     tenantId: auth.tenantId, actor: actorOf(auth), action: 'USER_CREATED', entity: 'user', entityId: created.id,
@@ -60,42 +70,37 @@ async function countOtherActiveAdmins(env, auth, userId) {
 
 export async function updateUser({ request, env, auth, params, ip }) {
   const user = await findUser(env, auth, params.id);
-  const body = v.onlyFields(await readJson(request), ['name', 'role', 'active']);
+  // O perfil não muda: não existe promoção a administrador nem rebaixamento.
+  const body = v.onlyFields(await readJson(request), ['name', 'active']);
   const changes = {};
   if (body.name !== undefined) changes.name = v.text(body.name, { field: 'o nome', min: 2, max: 80 });
-  if (body.role !== undefined) changes.role = v.oneOf(body.role, Object.values(ROLES), 'perfil');
   if (body.active !== undefined) changes.active = v.bool(body.active, 'ativo') ? 1 : 0;
   if (!Object.keys(changes).length) throw errors.validation('Nada para alterar.');
 
-  const roleChanged = changes.role !== undefined && changes.role !== user.role;
   const deactivated = changes.active === 0 && user.active === 1;
+  const reactivated = changes.active === 1 && user.active === 0;
 
-  if (user.id === auth.userId && (roleChanged || deactivated)) {
-    throw errors.invalidState('Você não pode alterar o próprio perfil nem desativar a si mesmo.');
-  }
-  const losesAdmin = user.role === 'ADMIN' && user.active === 1 && ((roleChanged && changes.role !== 'ADMIN') || deactivated);
-  if (losesAdmin && (await countOtherActiveAdmins(env, auth, user.id)) === 0) {
+  if (user.id === auth.userId && deactivated) throw errors.invalidState('Você não pode desativar a si mesmo.');
+  if (user.role === 'ADMIN' && user.active === 1 && deactivated && (await countOtherActiveAdmins(env, auth, user.id)) === 0) {
     throw errors.invalidState('O lava-jato precisa ter pelo menos um administrador ativo.');
   }
 
   const now = new Date().toISOString();
   const columns = Object.keys(changes);
+  // Reativar operador respeita o limite, conferido no próprio UPDATE (vale também com pedidos simultâneos).
+  const guard = reactivated && user.role === 'OPERADOR' ? ` AND ${ACTIVE_OPERATORS.replace('?1', '?')} < ${MAX_OPERATORS}` : '';
+  const binds = [...columns.map((c) => changes[c]), now, user.id, auth.tenantId, ...(guard ? [auth.tenantId] : [])];
   const statements = [
-    env.DB.prepare(`UPDATE users SET ${columns.map((c) => `${c} = ?`).join(', ')}, updated_at = ? WHERE id = ? AND tenant_id = ?`)
-      .bind(...columns.map((c) => changes[c]), now, user.id, auth.tenantId),
+    env.DB.prepare(`UPDATE users SET ${columns.map((c) => `${c} = ?`).join(', ')}, updated_at = ? WHERE id = ? AND tenant_id = ?${guard}`).bind(...binds),
     await auditStatement(env, {
-      tenantId: auth.tenantId,
-      actor: actorOf(auth),
-      action: roleChanged ? 'PERMISSION_CHANGED' : 'USER_UPDATED',
-      entity: 'user',
-      entityId: user.id,
-      details: { before: { name: user.name, role: user.role, active: user.active === 1 }, changes },
-      ip,
+      tenantId: auth.tenantId, actor: actorOf(auth), action: 'USER_UPDATED', entity: 'user', entityId: user.id,
+      details: { before: { name: user.name, active: user.active === 1 }, changes }, ip, onlyIfChanged: true,
     }),
   ];
-  // Mudança de perfil ou desativação vale imediatamente: derruba as sessões abertas.
-  if (roleChanged || deactivated) statements.push(revokeSessions(env, user.id, now));
-  await env.DB.batch(statements);
+  // Desativação vale imediatamente: derruba as sessões abertas.
+  if (deactivated) statements.push(revokeSessions(env, user.id, now));
+  const [update] = await env.DB.batch(statements);
+  if (update.meta.changes !== 1) throw errors.conflict(LIMIT_MESSAGE);
 
   return ok(toPublic({ ...user, ...changes }));
 }

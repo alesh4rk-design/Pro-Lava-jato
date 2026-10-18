@@ -15,26 +15,24 @@ const nameRule = (v) => (v.trim().length >= 2 ? null : 'Informe o nome.');
 const emailRule = (v) => (isValidEmail(v.trim()) ? null : 'Informe um e-mail válido.');
 const passwordRule = (v) => (isStrongPassword(v) ? null : 'Mínimo de 8 caracteres, com letras e números.');
 
-function roleSelector(current, disabled) {
-  return el('fieldset', { class: 'segmented', 'aria-label': 'Perfil' },
-    Object.entries(ROLE_LABEL).map(([value, label]) => el('label', {},
-      el('input', { type: 'radio', name: 'role', value, checked: value === current, disabled }),
-      label)),
-  );
-}
-
-const selectedRole = (form) => form.querySelector('input[name="role"]:checked')?.value;
+let limits = { operators_max: 2, operators_active: 0 };
+const limitReached = () => limits.operators_active >= limits.operators_max;
+const LIMIT_TEXT = (l) => `Limite de ${l.operators_max} operadores atingido. Desative um operador para cadastrar outro.`;
 
 function openCreate() {
+  if (limitReached()) {
+    toast(LIMIT_TEXT(limits), { type: 'error' });
+    return;
+  }
   const form = el('form', { class: 'form', novalidate: true },
     field({ id: 'u-name', label: 'Nome', type: 'text', maxlength: 80, autocomplete: 'off' }),
     field({ id: 'u-email', label: 'E-mail (usado no login)', type: 'email', inputmode: 'email', maxlength: 254, autocomplete: 'off' }),
     field({ id: 'u-password', label: 'Senha inicial', type: 'text', maxlength: 128, autocomplete: 'new-password', hint: 'Entregue ao usuário. Ele pode trocá-la em "Minha conta" ou usar "Esqueci minha senha" no login.' }),
-    el('div', { class: 'field' }, el('span', { class: 'stat-label' }, 'Perfil'), roleSelector('OPERADOR', false)),
+    el('p', { class: 'hint' }, 'O novo usuário entra como operador: lança receitas e despesas, mas não vê custos, relatórios nem usuários.'),
   );
 
   openModal({
-    title: 'Novo usuário',
+    title: 'Novo operador',
     content: form,
     actions: [
       { label: 'Cancelar', variant: 'btn-outline' },
@@ -48,7 +46,6 @@ function openCreate() {
           const created = await runBusy(button, async () => api.post('/users', {
             name: name.value.trim(),
             id_token: await signUpOrResume(email.value, password.value),
-            role: selectedRole(form),
           }));
           if (created) {
             close();
@@ -94,7 +91,7 @@ function openEdit(user) {
   const activeInput = el('input', { type: 'checkbox', id: 'e-active', checked: user.active, disabled: self });
   const form = el('form', { class: 'form', novalidate: true },
     field({ id: 'e-name', label: 'Nome', type: 'text', maxlength: 80, value: user.name }),
-    el('div', { class: 'field' }, el('span', { class: 'stat-label' }, 'Perfil'), roleSelector(user.role, self)),
+    el('div', { class: 'field' }, el('span', { class: 'stat-label' }, 'Perfil'), el('span', { class: 'badge badge-primary' }, ROLE_LABEL[user.role] ?? user.role), el('span', { class: 'hint' }, 'O perfil não pode ser alterado.')),
     el('label', { class: 'switch', for: 'e-active' }, 'Usuário ativo', activeInput),
     self ? el('p', { class: 'hint' }, 'Você não pode alterar o próprio perfil nem se desativar.') : null,
     self ? null : el('button', { class: 'btn btn-outline btn-block', type: 'button', onclick: () => openResetPassword(user) }, 'Redefinir senha'),
@@ -114,7 +111,6 @@ function openEdit(user) {
 
           const changes = {};
           if (name.value.trim() !== user.name) changes.name = name.value.trim();
-          if (!self && selectedRole(form) !== user.role) changes.role = selectedRole(form);
           if (!self && activeInput.checked !== user.active) changes.active = activeInput.checked;
           if (!Object.keys(changes).length) {
             close();
@@ -161,8 +157,14 @@ function userCard(user) {
 async function load() {
   list.replaceChildren(el('div', { class: 'card' }, el('div', { class: 'skeleton sk-line' }), el('div', { class: 'skeleton sk-value-sm' })));
   try {
-    const { items } = await api.get('/users');
-    list.replaceChildren(...(items.length ? items.map(userCard) : [stateView({ title: 'Nenhum usuário', message: 'Cadastre o primeiro operador.' })]));
+    const data = await api.get('/users');
+    limits = data.limits ?? limits;
+    const hint = document.getElementById('limit-hint');
+    hint.textContent = limitReached()
+      ? `Operadores ativos: ${limits.operators_active} de ${limits.operators_max}. Para cadastrar outro, desative um.`
+      : `Operadores ativos: ${limits.operators_active} de ${limits.operators_max}.`;
+    hint.classList.toggle('is-full', limitReached());
+    list.replaceChildren(...(data.items.length ? data.items.map(userCard) : [stateView({ title: 'Nenhum usuário', message: 'Cadastre o primeiro operador.' })]));
   } catch (error) {
     list.replaceChildren(stateView({ type: 'error', title: 'Não foi possível carregar', message: error.message, actionLabel: 'Tentar novamente', onAction: load }));
   }

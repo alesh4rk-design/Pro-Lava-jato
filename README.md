@@ -18,6 +18,8 @@ Cloudflare D1 (SQLite, dinheiro em centavos)
 | Administrador do lava-jato | Login normal | Responsável pelos lançamentos; tudo do lava-jato |
 | Operador | Login normal | Registra receitas e despesas, vê o dashboard |
 
+**Regra de perfis:** o administrador do lava-jato é sempre quem pediu o acesso; ninguém é promovido a administrador (nem rebaixado). Ele só cadastra **operadores**, no máximo **2 ativos** por lava-jato (desativar um libera a vaga; reativar também respeita o limite). A API aplica a regra, inclusive com cadastros simultâneos.
+
 Um novo lava-jato usa **"Solicitar acesso"** na tela de login, informando o próprio nome. A conta fica
 **pendente** até o administrador do sistema autorizar. O nome do lava-jato aparece no topo do app.
 
@@ -65,8 +67,8 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET / PUT | `/api/auth/me` | lava-jato (PUT: o próprio nome) |
 | POST | `/api/auth/password` | lava-jato (confirma a troca feita no Firebase) |
 | POST | `/api/access-requests` | público (limite por IP) |
-| GET / POST | `/api/users` | ADMIN |
-| PUT | `/api/users/:id` | ADMIN |
+| GET / POST | `/api/users` | ADMIN (só cadastra operador; a lista informa `limits`) |
+| PUT | `/api/users/:id` | ADMIN (nome e ativo; o perfil não muda) |
 | POST | `/api/users/:id/password` | ADMIN (audita e devolve o e-mail; o envio é do Firebase) |
 | GET | `/api/dashboard?period=` | lava-jato |
 | GET | `/api/reports/financial` · `categories` · `services` · `break-even` | ADMIN |
