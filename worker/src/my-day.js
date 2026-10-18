@@ -11,13 +11,14 @@ export async function getMyDay({ env, auth }) {
   const date = today(timeZone(env));
   const [revenues, expenses] = await env.DB.batch([
     env.DB.prepare(
-      `SELECT r.id, r.amount_cents, r.payment_method, r.description, s.name AS label, r.created_at
+      `SELECT r.id, r.amount_cents, r.payment_method, r.description, s.name AS label, cust.name AS customer_name, r.created_at
          FROM revenues r LEFT JOIN services s ON s.tenant_id = r.tenant_id AND s.id = r.service_id
+                         LEFT JOIN customers cust ON cust.tenant_id = r.tenant_id AND cust.id = r.customer_id
         WHERE r.tenant_id = ? AND r.user_id = ? AND r.date = ? AND r.status = 'ATIVO'
         ORDER BY r.id DESC LIMIT ?`,
     ).bind(auth.tenantId, auth.userId, date, LIMIT),
     env.DB.prepare(
-      `SELECT e.id, e.amount_cents, e.payment_method, e.description, c.name AS label, e.created_at
+      `SELECT e.id, e.amount_cents, e.payment_method, e.description, c.name AS label, NULL AS customer_name, e.created_at
          FROM expenses e JOIN categories c ON c.tenant_id = e.tenant_id AND c.id = e.category_id
         WHERE e.tenant_id = ? AND e.user_id = ? AND e.date = ? AND e.status = 'ATIVO'
         ORDER BY e.id DESC LIMIT ?`,
@@ -25,7 +26,7 @@ export async function getMyDay({ env, auth }) {
   ]);
   const item = (kind) => (row) => ({
     kind, id: row.id, title: row.description || row.label || (kind === 'IN' ? 'Receita' : 'Despesa'),
-    amount_cents: row.amount_cents, payment_method: row.payment_method, created_at: row.created_at,
+    customer_name: row.customer_name, amount_cents: row.amount_cents, payment_method: row.payment_method, created_at: row.created_at,
   });
   const items = [...revenues.results.map(item('IN')), ...expenses.results.map(item('OUT'))]
     .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id);

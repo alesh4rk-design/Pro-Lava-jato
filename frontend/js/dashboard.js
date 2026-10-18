@@ -150,7 +150,7 @@ function myDayRow(item) {
   return el('li', {},
     el('button', { class: `entry-row ${isIn ? 'is-in' : 'is-out'}`, type: 'button', onclick: () => openEntryDetail(item.kind, item.id, { isAdmin: false, onChanged: loadMyDay }) },
       el('span', { class: 'tile-icon' }, icon(isIn ? 'arrow-up' : 'arrow-down', 'icon icon-sm')),
-      el('span', {}, el('strong', {}, item.title), el('small', {}, [PAYMENT_LABELS[item.payment_method], time].filter(Boolean).join(' · '))),
+      el('span', {}, el('strong', {}, item.title), el('small', {}, [item.customer_name, PAYMENT_LABELS[item.payment_method], time].filter(Boolean).join(' · '))),
       el('span', { class: `entry-amount ${isIn ? 'text-success' : 'text-danger'}` }, `${isIn ? '+' : '−'}${formatCents(item.amount_cents)}`)));
 }
 

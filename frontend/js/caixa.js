@@ -66,7 +66,7 @@ function entryRow(item) {
   const isIn = item.kind === 'IN';
   const cancelled = item.status === 'CANCELADO';
   const title = item.description || item.ref_name || (isIn ? 'Receita' : 'Despesa');
-  const subtitle = [item.description ? item.ref_name : null, PAYMENT_LABELS[item.payment_method], formatDate(item.date)].filter(Boolean).join(' · ');
+  const subtitle = [item.customer_name, item.description ? item.ref_name : null, PAYMENT_LABELS[item.payment_method], formatDate(item.date)].filter(Boolean).join(' · ');
   return el('li', {},
     el('button', {
       class: `entry-row ${isIn ? 'is-in' : 'is-out'}${cancelled ? ' is-cancelled' : ''}`,

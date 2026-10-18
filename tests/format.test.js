@@ -211,3 +211,12 @@ test('mensagem com {pix}: chave, recebedor e aviso quando falta cadastrar', () =
   assert.ok(renderMessage(body, customer, 'Brilho').includes(PIX_MISSING));
   assert.equal(pixText({ key: '', holder: 'X' }), PIX_MISSING);
 });
+
+import { nameFromSearch } from '../frontend/js/cliente-busca.js';
+
+test('cliente novo na hora: o que foi digitado vira nome, menos telefone ou placa', () => {
+  assert.equal(nameFromSearch('  Maria Souza '), 'Maria Souza');
+  assert.equal(nameFromSearch('ABC1D23'), '');
+  assert.equal(nameFromSearch('11 98888-7777'), '');
+  assert.equal(nameFromSearch(''), '');
+});
