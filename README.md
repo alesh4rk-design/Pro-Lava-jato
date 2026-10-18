@@ -18,6 +18,8 @@ Cloudflare D1 (SQLite, dinheiro em centavos)
 | Administrador do lava-jato | Login normal | Responsável pelos lançamentos; tudo do lava-jato |
 | Operador | Login normal | Registra receitas e despesas, vê o dashboard |
 
+**O que o operador vê:** só o necessário para lançar. Início com "Seus lançamentos de hoje" (apenas o que ele mesmo lançou, sem totais, saldo, margem nem lançamentos de outras pessoas), Lançar, Produtos e estoque (sem custos), Serviços (sem custos), Clientes e mensagens. Painel, Caixa, Análise, listas de lançamentos, relatórios, categorias, usuários, configurações e auditoria são só do administrador; a API recusa (403) mesmo se alguém tentar chamar direto, e o operador só abre o detalhe de um lançamento que ele mesmo fez hoje.
+
 **Regra de perfis:** o administrador do lava-jato é sempre quem pediu o acesso; ninguém é promovido a administrador (nem rebaixado). Ele só cadastra **operadores**, no máximo **2 ativos** por lava-jato (desativar um libera a vaga; reativar também respeita o limite). A API aplica a regra, inclusive com cadastros simultâneos.
 
 Um novo lava-jato usa **"Solicitar acesso"** na tela de login, informando o próprio nome. A conta fica
@@ -70,7 +72,8 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET / POST | `/api/users` | ADMIN (só cadastra operador; a lista informa `limits`) |
 | PUT | `/api/users/:id` | ADMIN (nome e ativo; o perfil não muda) |
 | POST | `/api/users/:id/password` | ADMIN (audita e devolve o e-mail; o envio é do Firebase) |
-| GET | `/api/dashboard?period=` | lava-jato |
+| GET | `/api/dashboard?period=` | ADMIN |
+| GET | `/api/my-day` | lava-jato (o que a própria pessoa lançou hoje) |
 | GET | `/api/reports/financial` · `categories` · `services` · `break-even` | ADMIN |
 | GET | `/api/audit?period=&group=&user_id=` | ADMIN (auditoria do lava-jato) |
 | GET / PUT | `/api/settings` | ADMIN (nome e telefone do lava-jato) |
@@ -83,8 +86,9 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET | `/api/products?low_stock=1` · `/:id` | lava-jato (custo só ADMIN) |
 | POST / PUT | `/api/products` · `/:id` | ADMIN |
 | POST | `/api/products/:id/movements` | compra e consumo: ADMIN e OPERADOR; ajuste: ADMIN |
-| GET / POST | `/api/revenues` · `/api/expenses` | lava-jato (lançar: ADMIN e OPERADOR) |
-| GET | `/api/revenues/:id` · `/api/expenses/:id` | lava-jato |
+| GET | `/api/revenues` · `/api/expenses` | ADMIN |
+| POST | `/api/revenues` · `/api/expenses` | ADMIN e OPERADOR |
+| GET | `/api/revenues/:id` · `/api/expenses/:id` | ADMIN (operador: só o próprio, de hoje) |
 | PUT / DELETE | `/api/revenues/:id` · `/api/expenses/:id` | ADMIN (DELETE = cancelar) |
 | GET / POST | `/api/customers` | lava-jato (clientes; busca `?q=`, paginação `?page=`) |
 | PUT | `/api/customers/:id` | lava-jato (editar, desativar) |
@@ -94,7 +98,7 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET / POST | `/api/recurring-expenses` | ADMIN (lista; cria despesa recorrente) |
 | PUT | `/api/recurring-expenses/:id` | ADMIN (editar, pausar, retomar) |
 | GET | `/api/recurring-expenses/upcoming?days=` | ADMIN (próximos vencimentos, alimenta o aviso do Início) |
-| GET | `/api/cash?period=` · `/api/cash/entries` | lava-jato |
+| GET | `/api/cash?period=` · `/api/cash/entries` | ADMIN |
 | POST | `/api/system/auth/login` · `/logout` | administrador do sistema |
 | GET | `/api/system/tenants?status=` | administrador do sistema |
 | PUT | `/api/system/tenants/:id` | administrador do sistema (corrigir nome e telefone do cliente) |

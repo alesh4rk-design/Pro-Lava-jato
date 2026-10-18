@@ -705,3 +705,5 @@
 .page-title .btn {
   flex: none;
 }
+
+.bottom-nav.is-compact { grid-template-columns: repeat(3, 1fr); }

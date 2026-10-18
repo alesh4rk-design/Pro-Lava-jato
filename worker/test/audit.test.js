@@ -80,7 +80,7 @@ describe('sessão e limites', () => {
     const res = await post(f, '/api/expenses', { category_id: f.categoryId, amount_cents: 100 }, f.opToken);
     expect(res.status).toBe(429);
     // leitura continua liberada; outro usuário não é afetado
-    expect((await call('GET', '/api/cash', { token: f.opToken })).status).toBe(200);
+    expect((await call('GET', '/api/my-day', { token: f.opToken })).status).toBe(200);
     expect((await post(f, '/api/expenses', { category_id: f.categoryId, amount_cents: 100 })).status).toBe(201);
   });
 

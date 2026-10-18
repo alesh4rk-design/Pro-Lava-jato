@@ -192,22 +192,35 @@ test('operador: lança, mas não vê custos nem áreas do administrador', async 
 
   await operator.goto('mais.html');
   await expect(operator.locator('.menu-link:visible')).toHaveText(['Clientes e mensagens', 'Produtos e estoque', 'Serviços']);
-  for (const page of ['usuarios.html', 'categorias.html', 'auditoria.html', 'configuracoes.html']) {
+  for (const page of ['usuarios.html', 'categorias.html', 'auditoria.html', 'configuracoes.html', 'caixa.html', 'analise.html', 'recorrentes.html']) {
     await operator.goto(page);
     await operator.waitForURL(/dashboard\.html/);
   }
-  await operator.goto('analise.html');
-  await expect(operator.locator('#analysis')).toContainText('apenas para o administrador');
   await operator.goto('produtos.html');
   await expect(operator.locator('#product-list')).not.toContainText('Custo');
 
+  // Menu enxuto: Início, Lançar e Mais (sem Caixa e sem Análise)
+  await expect(operator.locator('.bottom-nav .nav-item')).toHaveText(['Início', 'Lançar', 'Mais']);
+
+  // Início do operador: só o que ele mesmo lançou hoje, sem totais do lava-jato
+  await operator.goto('dashboard.html');
+  await expect(operator.locator('#dash-content')).toContainText('Seus lançamentos de hoje');
+  await expect(operator.locator('#dash-content .entry-row')).toHaveCount(1);
+  await expect(operator.locator('#dash-content')).toContainText('+R$ 70,00');
+  for (const hidden of ['Resultado do período', 'Faturamento', 'Margem', 'Despesas', 'Saldo']) await expect(operator.locator('main')).not.toContainText(hidden);
+  await expect(operator.locator('#period-chips')).toBeHidden();
+  await operator.locator('#dash-content .entry-row').click();
+  await expect(operator.locator('dialog[open]')).toContainText('Receita');
+  await expect(operator.locator('dialog[open]')).not.toContainText('Custo estimado');
+  await operator.click('dialog[open] button[aria-label="Fechar"]');
+
   // A interface esconde; quem bloqueia é a API.
-  const status = await operator.evaluate(async () => {
+  const statuses = await operator.evaluate(async () => {
     const { token } = JSON.parse(localStorage.getItem('lj.session'));
-    const r = await fetch('http://127.0.0.1:8787/api/reports/financial', { headers: { Authorization: `Bearer ${token}` } });
-    return r.status;
+    const get = async (path) => (await fetch(`http://127.0.0.1:8787/api${path}`, { headers: { Authorization: `Bearer ${token}` } })).status;
+    return Promise.all(['/reports/financial', '/dashboard?period=month', '/cash?period=month', '/cash/entries?period=month', '/revenues', '/expenses'].map(get));
   });
-  expect(status).toBe(403);
+  expect(statuses).toEqual([403, 403, 403, 403, 403, 403]);
 });
 
 test('nenhuma tela rola para o lado em 360px', async () => {

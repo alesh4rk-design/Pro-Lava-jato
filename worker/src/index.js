@@ -18,6 +18,7 @@ import * as reports from './reports.js';
 import * as settings from './settings.js';
 import * as recurring from './recurring.js';
 import * as customers from './customers.js';
+import * as myDay from './my-day.js';
 
 const { ADMIN, OPERADOR } = ROLES;
 const PUBLIC = null;
@@ -56,7 +57,7 @@ const ROUTES = [
   ['POST', '/api/recurring-expenses', TENANT, [ADMIN], recurring.createRecurring],
   ['PUT', '/api/recurring-expenses/:id', TENANT, [ADMIN], recurring.updateRecurring],
 
-  ['GET', '/api/dashboard', TENANT, [], dashboard.getDashboard],
+  ['GET', '/api/dashboard', TENANT, [ADMIN], dashboard.getDashboard],
   ['GET', '/api/audit', TENANT, [ADMIN], listTenantAudit],
   ['GET', '/api/settings', TENANT, [ADMIN], settings.getSettings],
   ['PUT', '/api/settings', TENANT, [ADMIN], settings.updateSettings],
@@ -83,20 +84,22 @@ const ROUTES = [
   // Compra e consumo: ADMIN e OPERADOR; ajuste (AJUSTE) é conferido como só ADMIN no handler.
   ['POST', '/api/products/:id/movements', TENANT, [ADMIN, OPERADOR], products.createMovement],
 
-  ['GET', '/api/revenues', TENANT, [], revenues.listRevenues],
+  // O operador só enxerga o que ele mesmo lançou hoje ("Meu dia" e o detalhe de cada lançamento); o resto do financeiro é do administrador.
+  ['GET', '/api/my-day', TENANT, [], myDay.getMyDay],
+  ['GET', '/api/revenues', TENANT, [ADMIN], revenues.listRevenues],
   ['POST', '/api/revenues', TENANT, [ADMIN, OPERADOR], revenues.createRevenue],
   ['GET', '/api/revenues/:id', TENANT, [], revenues.getRevenue],
   ['PUT', '/api/revenues/:id', TENANT, [ADMIN], revenues.updateRevenue],
   ['DELETE', '/api/revenues/:id', TENANT, [ADMIN], revenues.cancelRevenue],
 
-  ['GET', '/api/expenses', TENANT, [], expenses.listExpenses],
+  ['GET', '/api/expenses', TENANT, [ADMIN], expenses.listExpenses],
   ['POST', '/api/expenses', TENANT, [ADMIN, OPERADOR], expenses.createExpense],
   ['GET', '/api/expenses/:id', TENANT, [], expenses.getExpense],
   ['PUT', '/api/expenses/:id', TENANT, [ADMIN], expenses.updateExpense],
   ['DELETE', '/api/expenses/:id', TENANT, [ADMIN], expenses.cancelExpense],
 
-  ['GET', '/api/cash', TENANT, [], cash.cashSummary],
-  ['GET', '/api/cash/entries', TENANT, [], cash.cashEntries],
+  ['GET', '/api/cash', TENANT, [ADMIN], cash.cashSummary],
+  ['GET', '/api/cash/entries', TENANT, [ADMIN], cash.cashEntries],
 
   ['POST', '/api/system/auth/login', PUBLIC, [], authRoutes.systemLogin],
   ['POST', '/api/system/auth/logout', SYSTEM, [], authRoutes.logout],

@@ -3,8 +3,11 @@
 import { session } from './app.js';
 import { api } from './api.js';
 import { formatCents, formatBasisPoints, formatInteger, formatDate } from './format.js';
+import { PAYMENT_LABELS } from './entry-form.js';
+import { openEntryDetail } from './entry-detail.js';
 import { el, icon, stateView } from './ui.js';
 import { periodPicker } from './periods.js';
+import { config } from './config.js';
 import { whenText } from './recorrentes-text.js';
 
 const content = document.getElementById('dash-content');
@@ -139,9 +142,44 @@ async function loadDueAlert() {
   }
 }
 
+/* Meu dia (operador): só o que a própria pessoa lançou hoje. Nada de totais, saldo ou lançamentos de outros. */
+
+function myDayRow(item) {
+  const isIn = item.kind === 'IN';
+  const time = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: config.TIMEZONE }).format(new Date(item.created_at));
+  return el('li', {},
+    el('button', { class: `entry-row ${isIn ? 'is-in' : 'is-out'}`, type: 'button', onclick: () => openEntryDetail(item.kind, item.id, { isAdmin: false, onChanged: loadMyDay }) },
+      el('span', { class: 'tile-icon' }, icon(isIn ? 'arrow-up' : 'arrow-down', 'icon icon-sm')),
+      el('span', {}, el('strong', {}, item.title), el('small', {}, [PAYMENT_LABELS[item.payment_method], time].filter(Boolean).join(' · '))),
+      el('span', { class: `entry-amount ${isIn ? 'text-success' : 'text-danger'}` }, `${isIn ? '+' : '−'}${formatCents(item.amount_cents)}`)));
+}
+
+async function loadMyDay() {
+  try {
+    const { items, revenue_count: revenues, expense_count: expenses } = await api.get('/my-day');
+    content.replaceChildren(
+      el('div', { class: 'card stat-hero' },
+        el('div', { class: 'stat-label' }, 'Seus lançamentos de hoje'),
+        el('div', { class: 'stat-value num' }, formatInteger(items.length)),
+        el('div', { class: 'stat-hero-foot' }, el('span', {}, `${revenues} ${revenues === 1 ? 'receita' : 'receitas'} · ${expenses} ${expenses === 1 ? 'despesa' : 'despesas'}`))),
+      items.length
+        ? el('ul', { class: 'list entry-list' }, items.map(myDayRow))
+        : stateView({ title: 'Nada lançado hoje', message: 'Use "Lançar" para registrar uma receita ou despesa.' }));
+  } catch (error) {
+    content.replaceChildren(stateView({ type: 'error', title: 'Não foi possível carregar', message: error.message, actionLabel: 'Tentar novamente', onAction: loadMyDay }));
+  }
+}
+
 function init() {
   if (!session) return;
   loadStockAlert();
+  if (session.user.role !== 'ADMIN') {
+    document.getElementById('period-chips').hidden = true;
+    label.hidden = true;
+    renderSkeleton();
+    loadMyDay();
+    return;
+  }
   loadDueAlert();
   periodPicker({
     container: document.getElementById('period-chips'),
