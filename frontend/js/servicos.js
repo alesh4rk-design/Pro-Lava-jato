@@ -3,7 +3,7 @@
 import { session } from './app.js';
 import { api } from './api.js';
 import { formatCents, formatBasisPoints, parseMoneyToCents, centsToInput, UNITS } from './format.js';
-import { el, icon, field, toast, openModal, stateView, runBusy, validateFields, setFieldError } from './ui.js';
+import { el, icon, field, toast, openModal, stateView, runBusy, validateFields, setFieldError, editChip } from './ui.js';
 import { sectionLabel } from './entry-form.js';
 import { invalidateCatalog } from './catalog.js';
 
@@ -196,7 +196,7 @@ function serviceCard(s) {
     isAdmin
       ? el('div', { class: 'tenant-actions' },
         s.active ? (s.has_cost_composition ? el('span', { class: 'badge badge-warning' }, 'Estimativa') : null) : el('span', { class: 'badge' }, 'Inativo'),
-        el('span', { class: 'chevron' }, icon('chevron-right', 'icon icon-sm')))
+        editChip())
       : null,
   ];
   return isAdmin

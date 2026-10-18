@@ -69,6 +69,19 @@ export function me({ auth }) {
   });
 }
 
+/** O próprio usuário altera o nome exibido (qualquer perfil). */
+export async function updateMe({ request, env, auth, ip }) {
+  const body = v.onlyFields(await readJson(request), ['name']);
+  const name = v.text(body.name, { field: 'o nome', min: 2, max: 80 });
+  if (name !== auth.name) {
+    await env.DB.batch([
+      env.DB.prepare('UPDATE users SET name = ?, updated_at = ? WHERE id = ? AND tenant_id = ?').bind(name, new Date().toISOString(), auth.userId, auth.tenantId),
+      await auditStatement(env, { tenantId: auth.tenantId, actor: actorOf(auth), action: 'PROFILE_UPDATED', entity: 'user', entityId: auth.userId, details: { before: { name: auth.name }, after: { name } }, ip }),
+    ]);
+  }
+  return ok({ user: { id: auth.userId, name, role: auth.role, email: auth.email } });
+}
+
 /**
  * A senha é trocada no próprio Firebase (que exige a senha atual). Aqui chega o token novo, de login
  * recente, só para registrar na auditoria e encerrar as outras sessões.

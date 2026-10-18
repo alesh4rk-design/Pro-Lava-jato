@@ -90,3 +90,44 @@ describe('gestão de lava-jatos', () => {
     expect(JSON.parse(log.details)).toMatchObject({ from: 'PENDENTE', to: 'ATIVO' });
   });
 });
+
+describe('edição de cliente pelo administrador do sistema', () => {
+  it('corrige nome e telefone com auditoria; valida; lava-jato não acessa a rota', async () => {
+    const { token } = await systemSession();
+    const tenant = await adminSession();
+
+    const res = await call('PUT', `/api/system/tenants/${tenant.tenantId}`, { token, body: { business_name: 'Brilho Novo', phone: '(11) 97777-6666' } });
+    expect(res.status).toBe(200);
+    expect(res.json.data).toMatchObject({ business_name: 'Brilho Novo', phone: '11977776666' });
+    const log = await env.DB.prepare("SELECT details FROM audit_logs WHERE action = 'TENANT_UPDATED' AND entity_id = ?").bind(tenant.tenantId).first();
+    expect(JSON.parse(log.details).before.business_name).toBe('Lava Teste');
+
+    expect((await call('PUT', `/api/system/tenants/${tenant.tenantId}`, { token, body: { business_name: 'A' } })).status).toBe(400);
+    expect((await call('PUT', `/api/system/tenants/${tenant.tenantId}`, { token, body: { status: 'ATIVO' } })).status).toBe(400);
+    expect((await call('PUT', '/api/system/tenants/99999999', { token, body: { business_name: 'Outro Nome' } })).status).toBe(404);
+    expect((await call('PUT', `/api/system/tenants/${tenant.tenantId}`, { token: tenant.token, body: { business_name: 'Invasor' } })).status).toBe(401);
+  });
+});
+
+describe('privacidade das ações do administrador do sistema', () => {
+  it('autorizar, bloquear, desbloquear e editar não aparecem na auditoria do lava-jato, só na do sistema', async () => {
+    const { token } = await systemSession();
+    const pending = await seedTenant({ status: 'PENDENTE' });
+    await call('POST', `/api/system/tenants/${pending.tenantId}/approve`, { token, body: {} });
+    await call('POST', `/api/system/tenants/${pending.tenantId}/block`, { token, body: {} });
+    await call('POST', `/api/system/tenants/${pending.tenantId}/unblock`, { token, body: {} });
+    await call('PUT', `/api/system/tenants/${pending.tenantId}`, { token, body: { business_name: 'Nome Corrigido' } });
+
+    const tenantToken = await login(pending.email);
+    const own = await call('GET', '/api/audit?period=today', { token: tenantToken });
+    expect(own.status).toBe(200);
+    const actions = own.json.data.items.map((i) => i.action);
+    expect(actions).toContain('LOGIN');
+    for (const hidden of ['TENANT_APPROVED', 'TENANT_BLOCKED', 'TENANT_UNBLOCKED', 'TENANT_UPDATED']) expect(actions).not.toContain(hidden);
+    expect(JSON.stringify(own.json)).not.toContain('Admin Sistema');
+
+    const platform = await call('GET', '/api/system/audit?period=today', { token });
+    const platformActions = platform.json.data.items.map((i) => i.action);
+    for (const shown of ['TENANT_APPROVED', 'TENANT_BLOCKED', 'TENANT_UNBLOCKED', 'TENANT_UPDATED']) expect(platformActions).toContain(shown);
+  });
+});

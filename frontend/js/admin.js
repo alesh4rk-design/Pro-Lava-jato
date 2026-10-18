@@ -1,10 +1,10 @@
-// Painel do administrador do sistema: autorizar, bloquear e desbloquear acessos de clientes.
+// Painel do administrador do sistema: autorizar, bloquear, desbloquear e corrigir dados de clientes.
 
 import { session } from './app.js';
 import { api } from './api.js';
 import { config } from './config.js';
 import { formatDateTime, formatPhone } from './format.js';
-import { el, icon, toast, confirmDialog, stateView, setBusy } from './ui.js';
+import { el, icon, field, toast, openModal, confirmDialog, stateView, setBusy, runBusy, validateFields } from './ui.js';
 
 const STATUS = {
   PENDENTE: { label: 'Pendente', badge: 'badge-warning' },
@@ -49,6 +49,39 @@ async function runAction(tenant, action, button) {
   }
 }
 
+/** Corrige nome e telefone do cliente (ex.: erro de digitação na solicitação). */
+function openEditTenant(tenant) {
+  const form = el('form', { class: 'form', novalidate: true },
+    field({ id: 't-name', label: 'Nome do lava-jato', type: 'text', maxlength: 80, value: tenant.business_name, autocomplete: 'off' }),
+    field({ id: 't-phone', label: 'Telefone / WhatsApp', type: 'tel', inputmode: 'tel', maxlength: 20, value: tenant.phone ? formatPhone(tenant.phone) : '' }),
+  );
+  openModal({
+    title: 'Editar cliente',
+    content: form,
+    actions: [
+      { label: 'Cancelar', variant: 'btn-outline' },
+      {
+        label: 'Salvar',
+        variant: 'btn-primary',
+        onClick: async (close, button) => {
+          const name = form.querySelector('#t-name');
+          const phone = form.querySelector('#t-phone');
+          const valid = validateFields([
+            [name, (v) => (v.trim().length >= 2 ? null : 'Informe o nome do lava-jato.')],
+            [phone, (v) => { const d = v.replace(/\D/g, ''); return !v.trim() || (d.length >= 10 && d.length <= 13) ? null : 'Telefone inválido. Use DDD + número.'; }],
+          ]);
+          if (!valid) return;
+          const saved = await runBusy(button, () => api.put(`/system/tenants/${encodeURIComponent(tenant.id)}`, { business_name: name.value.trim(), phone: phone.value.trim() }));
+          if (!saved) return;
+          close();
+          toast('Dados do cliente atualizados.', { type: 'success' });
+          load();
+        },
+      },
+    ],
+  });
+}
+
 function tenantCard(tenant) {
   const status = STATUS[tenant.status] ?? { label: tenant.status, badge: '' };
   const actions = (ACTIONS_BY_STATUS[tenant.status] ?? []).map((action) => {
@@ -63,6 +96,7 @@ function tenantCard(tenant) {
       el('h3', {}, tenant.business_name),
       el('span', { class: `badge ${status.badge}` }, status.label),
     ),
+    el('button', { class: 'btn btn-ghost btn-sm tenant-edit', type: 'button', onclick: () => openEditTenant(tenant) }, icon('edit', 'icon icon-sm'), 'Editar dados'),
     el('div', { class: 'tenant-meta' },
       tenant.owner_name ? el('span', {}, tenant.owner_name) : null,
       tenant.email ? el('span', {}, tenant.email) : null,

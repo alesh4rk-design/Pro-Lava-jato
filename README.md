@@ -62,7 +62,7 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 |---|---|---|
 | POST | `/api/auth/login` | público (recebe o token do Firebase; limite por IP) |
 | POST | `/api/auth/logout` | lava-jato |
-| GET | `/api/auth/me` | lava-jato |
+| GET / PUT | `/api/auth/me` | lava-jato (PUT: o próprio nome) |
 | POST | `/api/auth/password` | lava-jato (confirma a troca feita no Firebase) |
 | POST | `/api/access-requests` | público (limite por IP) |
 | GET / POST | `/api/users` | ADMIN |
@@ -87,6 +87,7 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET | `/api/cash?period=` · `/api/cash/entries` | lava-jato |
 | POST | `/api/system/auth/login` · `/logout` | administrador do sistema |
 | GET | `/api/system/tenants?status=` | administrador do sistema |
+| PUT | `/api/system/tenants/:id` | administrador do sistema (corrigir nome e telefone do cliente) |
 | POST | `/api/system/tenants/:id/approve` · `block` · `unblock` | administrador do sistema |
 
 Respostas: `{ "success": true, "data": … }` ou `{ "success": false, "error": { "code", "message" } }`.
@@ -159,6 +160,7 @@ Depois, em `frontend/js/config.js`, troque a URL de produção pela do Worker (+
 - Auditoria de login, logout, falhas, lançamentos, cancelamentos, preços, estoque, usuários, permissões e
   autorizações, gravada na mesma transação da alteração, sem senhas e com IP guardado só como hash.
   Telas: **Mais → Auditoria** (administrador do lava-jato) e **Clientes → Auditoria** (administrador do sistema).
+  Ações do administrador do sistema (autorizar, bloquear, desbloquear, editar cliente) aparecem só na auditoria do sistema, nunca para o lava-jato.
 - Sessão: renovada com o uso (7 dias), mas com validade máxima de 30 dias (7 para o administrador do sistema).
 - Limites: tentativas de senha limitadas pelo Firebase e 30 logins por IP a cada 15 min (5 por e-mail no login do administrador do sistema); 3 solicitações de acesso por IP por hora;
   120 gravações por minuto por usuário.

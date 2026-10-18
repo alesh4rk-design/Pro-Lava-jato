@@ -4,7 +4,7 @@ import { session } from './app.js';
 import { api } from './api.js';
 import { config } from './config.js';
 import { formatQty, formatUnitCost, formatCents, formatDateTime, UNITS } from './format.js';
-import { el, icon, field, chipGroup, toast, openModal, stateView, runBusy, validateFields } from './ui.js';
+import { el, icon, field, chipGroup, toast, openModal, stateView, runBusy, validateFields, editChip } from './ui.js';
 import { qtyField, sectionLabel } from './entry-form.js';
 import { getCategories, invalidateCatalog } from './catalog.js';
 import { openStockForm } from './estoque.js';
@@ -133,7 +133,7 @@ function productCard(p) {
     ),
     el('div', { class: 'tenant-actions' },
       p.category_name ? el('span', { class: 'badge badge-primary' }, p.category_name) : null,
-      el('span', { class: 'chevron' }, icon('chevron-right', 'icon icon-sm'))),
+      isAdmin ? editChip('Ver e editar') : el('span', { class: 'chevron' }, icon('chevron-right', 'icon icon-sm'))),
   );
 }
 

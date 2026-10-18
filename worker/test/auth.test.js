@@ -208,3 +208,24 @@ describe('perfil operador', () => {
     expect(me.json.data.user.role).toBe('OPERADOR');
   });
 });
+
+describe('minha conta: alterar o próprio nome', () => {
+  it('qualquer perfil altera o próprio nome, com auditoria; valida o nome e recusa outros campos', async () => {
+    const { tenantId } = await seedTenant();
+    const op = await seedUser(tenantId);
+    const token = await login(op.email);
+
+    const res = await call('PUT', '/api/auth/me', { token, body: { name: 'João da Silva' } });
+    expect(res.status).toBe(200);
+    expect(res.json.data.user.name).toBe('João da Silva');
+    expect((await call('GET', '/api/auth/me', { token })).json.data.user.name).toBe('João da Silva');
+    const log = await env.DB.prepare("SELECT details FROM audit_logs WHERE action = 'PROFILE_UPDATED' AND entity_id = ?").bind(op.userId).first();
+    expect(JSON.parse(log.details).after.name).toBe('João da Silva');
+
+    expect((await call('PUT', '/api/auth/me', { token, body: { name: 'A' } })).status).toBe(400);
+    expect((await call('PUT', '/api/auth/me', { token, body: { name: 'Novo Nome', role: 'ADMIN' } })).status).toBe(400);
+    expect((await call('PUT', '/api/auth/me', { body: { name: 'Sem Login' } })).status).toBe(401);
+    const row = await env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(op.userId).first();
+    expect(row.role).toBe('OPERADOR');
+  });
+});

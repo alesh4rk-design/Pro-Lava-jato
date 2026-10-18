@@ -5,7 +5,7 @@ import { api } from './api.js';
 import { config } from './config.js';
 import { signUpOrResume, sendPasswordReset } from './firebase.js';
 import { formatDateTime, isValidEmail, isStrongPassword } from './format.js';
-import { el, icon, field, toast, openModal, confirmDialog, stateView, runBusy, validateFields } from './ui.js';
+import { el, icon, field, toast, openModal, confirmDialog, stateView, runBusy, validateFields, editChip } from './ui.js';
 
 const ROLE_LABEL = { ADMIN: 'Administrador', OPERADOR: 'Operador' };
 
@@ -153,7 +153,7 @@ function userCard(user) {
     el('div', { class: 'tenant-actions' },
       el('span', { class: 'badge badge-primary' }, ROLE_LABEL[user.role] ?? user.role),
       self ? el('span', { class: 'badge' }, 'Você') : null,
-      el('span', { class: 'chevron' }, icon('chevron-right', 'icon icon-sm')),
+      editChip(),
     ),
   );
 }

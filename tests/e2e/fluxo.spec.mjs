@@ -157,6 +157,8 @@ test('análise, ponto de equilíbrio e auditoria', async () => {
 
   await owner.goto('auditoria.html');
   await expect(owner.locator('.audit-row', { hasText: 'Cancelou despesa de R$ 2.500,00 — motivo: Lançado errado' })).toBeVisible();
+  // Ações do administrador do sistema (autorizar etc.) nunca aparecem para o lava-jato.
+  await expect(owner.locator('#audit-list')).not.toContainText('Autorizou');
   await owner.click('#group-chips [data-group="ACESSOS"]');
   await expect(owner.locator('.audit-row').first()).toContainText('Entrou no sistema');
 });
@@ -254,4 +256,35 @@ test('esqueci minha senha, senha errada e troca de senha pelo Firebase', async (
   await owner.click('dialog button:has-text("Redefinir senha")');
   await owner.click('dialog button:has-text("Enviar e-mail")');
   await expect(lastToast(owner)).toContainText('E-mail de redefinição enviado');
+});
+
+test('navegação: voltar, editar o próprio nome e selos de edição', async ({ browser, playwright }) => {
+  await owner.goto('categorias.html');
+  await expect(owner.locator('.user-card').first().locator('.edit-chip')).toHaveText('Editar');
+  await owner.click('.header-back');
+  await owner.waitForURL(/mais\.html/);
+
+  await owner.click('button[aria-label="Conta"]');
+  await owner.click('#edit-my-name');
+  await owner.fill('#my-name', 'Maria Souza Lima');
+  await owner.click('dialog[open] .btn-primary');
+  await expect(lastToast(owner)).toContainText('Nome atualizado');
+  await owner.reload();
+  await owner.click('button[aria-label="Conta"]');
+  await expect(owner.locator('dialog[open]')).toContainText('Maria Souza Lima');
+  await owner.click('dialog[open] button[aria-label="Fechar"]');
+
+  // Administrador do sistema corrige o nome do cliente; isso não aparece na auditoria do lava-jato.
+  const system = await openPage(browser, playwright);
+  await login(system, SYSTEM, { system: true });
+  await system.click('#status-chips .chip:has-text("Ativos")');
+  await system.locator('.tenant-card', { hasText: 'Brilho Central' }).locator('.tenant-edit').click();
+  await system.fill('#t-name', 'Brilho Central Lava-Jato');
+  await system.click('dialog[open] .btn-primary');
+  await expect(lastToast(system)).toContainText('Dados do cliente atualizados');
+  expect(system.problems).toEqual([]);
+
+  await owner.goto('auditoria.html');
+  await expect(owner.locator('.audit-row', { hasText: 'Alterou o próprio nome' })).toBeVisible();
+  await expect(owner.locator('#audit-list')).not.toContainText('Editou os dados');
 });

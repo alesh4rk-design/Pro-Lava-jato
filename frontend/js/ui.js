@@ -28,6 +28,11 @@ export function icon(name, className = 'icon') {
   return svg;
 }
 
+/** Selo "Editar" (lápis) para cartões clicáveis: deixa claro que tocar abre a edição. */
+export function editChip(label = 'Editar') {
+  return el('span', { class: 'edit-chip' }, icon('edit', 'icon icon-sm'), label);
+}
+
 /* Toasts */
 
 let toastRegion;
