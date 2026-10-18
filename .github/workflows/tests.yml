@@ -10,7 +10,7 @@ permissions:
 jobs:
   frontend:
     name: unitários do frontend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,7 +20,7 @@ jobs:
 
   worker:
     name: API (Workers + D1)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: worker
@@ -36,7 +36,7 @@ jobs:
 
   e2e:
     name: ponta a ponta (celular)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

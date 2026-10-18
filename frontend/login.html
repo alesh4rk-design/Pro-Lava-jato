@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev http://127.0.0.1:8787; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev https://identitytoolkit.googleapis.com http://127.0.0.1:8787 http://127.0.0.1:9099; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#0a6e7d">
   <title>Entrar · Lava-Jato Gestão</title>
@@ -43,6 +43,7 @@
           <span class="field-error" id="login-password-error"></span>
         </div>
         <button class="btn btn-primary btn-block btn-lg" type="submit" id="login-submit">Entrar</button>
+        <button class="btn btn-ghost btn-block" type="button" id="forgot">Esqueci minha senha</button>
       </form>
 
       <form class="form" id="request-form" novalidate hidden>

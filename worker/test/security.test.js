@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { SELF } from 'cloudflare:test';
-import { call, adminSession, env, unique, ORIGIN } from './helpers.js';
+import { call, adminSession, env, ORIGIN, newFirebaseAccount } from './helpers.js';
 import { hashPassword, verifyPassword } from '../src/lib/crypto.js';
 
 describe('CORS', () => {
@@ -20,7 +20,7 @@ describe('CORS', () => {
     expect(preflight.status).toBe(403);
     expect(preflight.headers.get('Access-Control-Allow-Origin')).toBeNull();
 
-    const res = await call('POST', '/api/auth/login', { origin: 'https://malicioso.exemplo', body: { email: 'a@b.com', password: 'x' } });
+    const res = await call('POST', '/api/auth/login', { origin: 'https://malicioso.exemplo', body: { id_token: 'x' } });
     expect(res.status).toBe(403);
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
@@ -33,8 +33,8 @@ describe('CORS', () => {
 
 describe('SQL injection', () => {
   it('payloads no login não autenticam nem quebram o banco', async () => {
-    for (const email of ["' OR '1'='1", "admin@x.com' --", "a@b.com'; DROP TABLE users; --"]) {
-      const res = await call('POST', '/api/auth/login', { body: { email, password: "' OR '1'='1" } });
+    for (const id_token of ["' OR '1'='1", "admin@x.com' --", "a@b.com'; DROP TABLE users; --"]) {
+      const res = await call('POST', '/api/auth/login', { body: { id_token } });
       expect(res.status).toBe(401);
     }
     const users = await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first();
@@ -44,7 +44,7 @@ describe('SQL injection', () => {
   it('payloads em campos de texto são gravados literalmente', async () => {
     const { token } = await adminSession();
     const name = "Robert'); DROP TABLE users;--";
-    const res = await call('POST', '/api/users', { token, body: { name, email: `${unique()}@teste.com`, password: 'senha1234', role: 'OPERADOR' } });
+    const res = await call('POST', '/api/users', { token, body: { name, id_token: (await newFirebaseAccount()).idToken, role: 'OPERADOR' } });
     expect(res.status).toBe(201);
     expect(res.json.data.name).toBe(name);
     expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first()).toBeTruthy();
@@ -60,7 +60,7 @@ describe('XSS', () => {
   it('texto com HTML volta como dado JSON, nunca como HTML', async () => {
     const { token } = await adminSession();
     const name = '<img src=x onerror=alert(1)>';
-    const res = await call('POST', '/api/users', { token, body: { name, email: `${unique()}@teste.com`, password: 'senha1234', role: 'OPERADOR' } });
+    const res = await call('POST', '/api/users', { token, body: { name, id_token: (await newFirebaseAccount()).idToken, role: 'OPERADOR' } });
     expect(res.json.data.name).toBe(name);
     expect(res.headers.get('Content-Type')).toBe('application/json; charset=utf-8');
     expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
@@ -69,7 +69,7 @@ describe('XSS', () => {
 
   it('caracteres de controle são removidos', async () => {
     const { token } = await adminSession();
-    const res = await call('POST', '/api/users', { token, body: { name: 'Ana\u0000\u0007 Maria', email: `${unique()}@teste.com`, password: 'senha1234', role: 'OPERADOR' } });
+    const res = await call('POST', '/api/users', { token, body: { name: 'Ana\u0000\u0007 Maria', id_token: (await newFirebaseAccount()).idToken, role: 'OPERADOR' } });
     expect(res.json.data.name).toBe('Ana Maria');
   });
 });
@@ -83,16 +83,16 @@ describe('entrada malformada', () => {
   it('recusa JSON inválido, array e corpo enorme', async () => {
     expect((await call('POST', '/api/auth/login', { body: '{"email":' })).status).toBe(400);
     expect((await call('POST', '/api/auth/login', { body: '[1,2]' })).status).toBe(400);
-    expect((await call('POST', '/api/auth/login', { body: { email: 'a@b.com', password: 'x'.repeat(20_000) } })).status).toBe(413);
+    expect((await call('POST', '/api/auth/login', { body: { id_token: 'x'.repeat(20_000) } })).status).toBe(413);
   });
 
-  it('senha gigante no login não é processada', async () => {
-    const res = await call('POST', '/api/auth/login', { body: { email: 'a@b.com', password: 'x'.repeat(500) } });
+  it('token gigante no login não é processado', async () => {
+    const res = await call('POST', '/api/auth/login', { body: { id_token: 'x'.repeat(5000) } });
     expect(res.status).toBe(401);
   });
 
   it('tipos errados são recusados', async () => {
-    const res = await call('POST', '/api/auth/login', { body: { email: ['a@b.com'], password: { $ne: '' } } });
+    const res = await call('POST', '/api/auth/login', { body: { id_token: { $ne: '' } } });
     expect(res.status).toBe(401);
   });
 });

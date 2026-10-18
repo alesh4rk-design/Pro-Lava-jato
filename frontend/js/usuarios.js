@@ -3,6 +3,7 @@
 import { session } from './app.js';
 import { api } from './api.js';
 import { config } from './config.js';
+import { signUpOrResume, sendPasswordReset } from './firebase.js';
 import { formatDateTime, isValidEmail, isStrongPassword } from './format.js';
 import { el, icon, field, toast, openModal, confirmDialog, stateView, runBusy, validateFields } from './ui.js';
 
@@ -28,7 +29,7 @@ function openCreate() {
   const form = el('form', { class: 'form', novalidate: true },
     field({ id: 'u-name', label: 'Nome', type: 'text', maxlength: 80, autocomplete: 'off' }),
     field({ id: 'u-email', label: 'E-mail (usado no login)', type: 'email', inputmode: 'email', maxlength: 254, autocomplete: 'off' }),
-    field({ id: 'u-password', label: 'Senha inicial', type: 'text', maxlength: 128, autocomplete: 'new-password', hint: 'Entregue ao usuário, que pode trocá-la em "Minha conta".' }),
+    field({ id: 'u-password', label: 'Senha inicial', type: 'text', maxlength: 128, autocomplete: 'new-password', hint: 'Entregue ao usuário. Ele pode trocá-la em "Minha conta" ou usar "Esqueci minha senha" no login.' }),
     el('div', { class: 'field' }, el('span', { class: 'stat-label' }, 'Perfil'), roleSelector('OPERADOR', false)),
   );
 
@@ -43,10 +44,10 @@ function openCreate() {
         onClick: async (close, button) => {
           const [name, email, password] = ['u-name', 'u-email', 'u-password'].map((id) => form.querySelector(`#${id}`));
           if (!validateFields([[name, nameRule], [email, emailRule], [password, passwordRule]])) return;
-          const created = await runBusy(button, () => api.post('/users', {
+          // A conta (e-mail e senha) é criada no Firebase; a API recebe só o token que a identifica.
+          const created = await runBusy(button, async () => api.post('/users', {
             name: name.value.trim(),
-            email: email.value.trim().toLowerCase(),
-            password: password.value,
+            id_token: await signUpOrResume(email.value, password.value),
             role: selectedRole(form),
           }));
           if (created) {
@@ -62,8 +63,7 @@ function openCreate() {
 
 function openResetPassword(user) {
   const form = el('form', { class: 'form', novalidate: true },
-    el('p', { class: 'muted' }, `Defina uma nova senha para ${user.name}. A sessão aberta nos aparelhos em uso será encerrada.`),
-    field({ id: 'r-password', label: 'Nova senha', type: 'text', maxlength: 128, autocomplete: 'new-password' }),
+    el('p', { class: 'muted' }, `Enviamos um e-mail para ${user.email} com um link para criar uma nova senha. A senha atual continua valendo até a pessoa criar a nova.`),
   );
   openModal({
     title: 'Redefinir senha',
@@ -71,15 +71,17 @@ function openResetPassword(user) {
     actions: [
       { label: 'Cancelar', variant: 'btn-outline' },
       {
-        label: 'Redefinir',
+        label: 'Enviar e-mail',
         variant: 'btn-primary',
         onClick: async (close, button) => {
-          const input = form.querySelector('#r-password');
-          if (!validateFields([[input, passwordRule]])) return;
-          const done = await runBusy(button, () => api.post(`/users/${encodeURIComponent(user.id)}/password`, { password: input.value }));
+          const done = await runBusy(button, async () => {
+            const { email } = await api.post(`/users/${encodeURIComponent(user.id)}/password`, {});
+            await sendPasswordReset(email);
+            return true;
+          });
           if (done) {
             close();
-            toast('Senha redefinida.', { type: 'success' });
+            toast('E-mail de redefinição enviado.', { type: 'success' });
           }
         },
       },

@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { call, seedTenant, seedUser, login, adminSession, env, unique } from './helpers.js';
+import { call, seedTenant, seedUser, login, adminSession, env, newFirebaseAccount } from './helpers.js';
 
-const newUser = (overrides = {}) => ({ name: 'Operador Novo', email: `${unique()}@teste.com`, password: 'senha1234', role: 'OPERADOR', ...overrides });
+/** Corpo para criar usuário: a conta já foi criada no Firebase pelo navegador (aqui, simulada). */
+const newUser = async (overrides = {}) => {
+  const account = await newFirebaseAccount();
+  return { account, body: { name: 'Operador Novo', id_token: account.idToken, role: 'OPERADOR', ...overrides } };
+};
 
 describe('RBAC de usuários', () => {
   it('operador não pode listar, criar nem alterar usuários', async () => {
@@ -10,9 +14,9 @@ describe('RBAC de usuários', () => {
     const token = await login(op.email);
 
     expect((await call('GET', '/api/users', { token })).status).toBe(403);
-    expect((await call('POST', '/api/users', { token, body: newUser({ role: 'ADMIN' }) })).status).toBe(403);
+    expect((await call('POST', '/api/users', { token, body: (await newUser({ role: 'ADMIN' })).body })).status).toBe(403);
     expect((await call('PUT', `/api/users/${op.userId}`, { token, body: { role: 'ADMIN' } })).status).toBe(403);
-    expect((await call('POST', `/api/users/${userId}/password`, { token, body: { password: 'hackeada1' } })).status).toBe(403);
+    expect((await call('POST', `/api/users/${userId}/password`, { token, body: {} })).status).toBe(403);
   });
 
   it('administrador do sistema não usa rotas de lava-jato', async () => {
@@ -34,7 +38,7 @@ describe('isolamento entre lava-jatos', () => {
     expect(ids).not.toContain(bOperator.userId);
 
     expect((await call('PUT', `/api/users/${bOperator.userId}`, { token: a.token, body: { active: false } })).status).toBe(404);
-    expect((await call('POST', `/api/users/${b.userId}/password`, { token: a.token, body: { password: 'tomada123' } })).status).toBe(404);
+    expect((await call('POST', `/api/users/${b.userId}/password`, { token: a.token, body: {} })).status).toBe(404);
     const untouched = await env.DB.prepare('SELECT active FROM users WHERE id = ?').bind(bOperator.userId).first();
     expect(untouched.active).toBe(1);
   });
@@ -52,13 +56,13 @@ describe('isolamento entre lava-jatos', () => {
 describe('criação de usuários', () => {
   it('admin cria operador que já consegue entrar', async () => {
     const { token } = await adminSession();
-    const data = newUser();
-    const res = await call('POST', '/api/users', { token, body: data });
+    const { account, body } = await newUser();
+    const res = await call('POST', '/api/users', { token, body });
 
     expect(res.status).toBe(201);
-    expect(res.json.data).toMatchObject({ name: data.name, email: data.email, role: 'OPERADOR', active: true });
+    expect(res.json.data).toMatchObject({ name: body.name, email: account.email, role: 'OPERADOR', active: true });
     expect(res.json.data).not.toHaveProperty('password_hash');
-    await expect(login(data.email)).resolves.toBeTruthy();
+    await expect(login(account.email)).resolves.toBeTruthy();
   });
 
   it('nunca devolve hash de senha na listagem', async () => {
@@ -67,23 +71,25 @@ describe('criação de usuários', () => {
     expect(JSON.stringify(res.json)).not.toContain('pbkdf2');
   });
 
-  it('valida perfil, e-mail duplicado, senha fraca e campos extras', async () => {
+  it('valida perfil, e-mail duplicado, token inválido e campos extras', async () => {
     const { token, email } = await adminSession();
-    expect((await call('POST', '/api/users', { token, body: newUser({ role: 'SUPER_ADMIN' }) })).status).toBe(400);
-    expect((await call('POST', '/api/users', { token, body: newUser({ email }) })).status).toBe(409);
-    expect((await call('POST', '/api/users', { token, body: newUser({ password: '12345678' }) })).status).toBe(400);
-    expect((await call('POST', '/api/users', { token, body: { ...newUser(), tenant_id: 999 } })).status).toBe(400);
-    expect((await call('POST', '/api/users', { token, body: newUser({ name: 123 }) })).status).toBe(400);
+    expect((await call('POST', '/api/users', { token, body: (await newUser({ role: 'SUPER_ADMIN' })).body })).status).toBe(400);
+    const dup = await newFirebaseAccount(email);
+    expect((await call('POST', '/api/users', { token, body: (await newUser({ id_token: dup.idToken })).body })).status).toBe(409);
+    expect((await call('POST', '/api/users', { token, body: (await newUser({ id_token: 'lixo' })).body })).status).toBe(401);
+    expect((await call('POST', '/api/users', { token, body: { ...(await newUser()).body, tenant_id: 999 } })).status).toBe(400);
+    expect((await call('POST', '/api/users', { token, body: { ...(await newUser()).body, email: 'x@teste.com' } })).status).toBe(400);
+    expect((await call('POST', '/api/users', { token, body: (await newUser({ name: 123 })).body })).status).toBe(400);
   });
 
-  it('registra auditoria sem a senha', async () => {
+  it('registra auditoria só com nome, e-mail e perfil', async () => {
     const { token, tenantId } = await adminSession();
-    const data = newUser({ password: 'SegredoX123' });
-    const res = await call('POST', '/api/users', { token, body: data });
+    const { account, body } = await newUser();
+    const res = await call('POST', '/api/users', { token, body });
     const log = await env.DB.prepare("SELECT details FROM audit_logs WHERE action = 'USER_CREATED' AND tenant_id = ? AND entity_id = ?")
       .bind(tenantId, res.json.data.id).first();
-    expect(JSON.parse(log.details)).toEqual({ name: data.name, email: data.email, role: 'OPERADOR' });
-    expect(log.details).not.toContain('SegredoX123');
+    expect(JSON.parse(log.details)).toEqual({ name: body.name, email: account.email, role: 'OPERADOR' });
+    expect(log.details).not.toContain(account.idToken);
   });
 });
 
@@ -128,13 +134,14 @@ describe('alteração de usuários', () => {
     }
   });
 
-  it('redefinir senha encerra as sessões do usuário', async () => {
+  it('pedir redefinição de senha devolve o e-mail e audita (o envio é do Firebase)', async () => {
     const admin = await adminSession();
     const op = await seedUser(admin.tenantId);
-    const opToken = await login(op.email);
-    const res = await call('POST', `/api/users/${op.userId}/password`, { token: admin.token, body: { password: 'trocada123' } });
+    const res = await call('POST', `/api/users/${op.userId}/password`, { token: admin.token, body: {} });
     expect(res.status).toBe(200);
-    expect((await call('GET', '/api/auth/me', { token: opToken })).status).toBe(401);
-    await expect(login(op.email, 'trocada123')).resolves.toBeTruthy();
+    expect(res.json.data).toEqual({ email: op.email });
+    const log = await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_logs WHERE action = 'PASSWORD_RESET' AND entity_id = ?").bind(op.userId).first();
+    expect(log.n).toBe(1);
+    expect((await call('POST', `/api/users/${admin.userId}/password`, { token: admin.token, body: {} })).status).toBe(409);
   });
 });

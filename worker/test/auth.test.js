@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { call, seedTenant, seedUser, login, adminSession, env, PASSWORD, unique } from './helpers.js';
+import { call, seedTenant, seedUser, login, adminSession, env, unique, firebaseToken, tokenFor, newFirebaseAccount } from './helpers.js';
 import { sha256Hex } from '../src/lib/crypto.js';
 
-describe('login do lava-jato', () => {
-  it('entra com credenciais válidas e devolve token, usuário e lava-jato', async () => {
+const loginWith = (id_token, extra = {}) => call('POST', '/api/auth/login', { body: { id_token }, ...extra });
+
+describe('login do lava-jato (token do Firebase)', () => {
+  it('entra com token válido e devolve token, usuário e lava-jato', async () => {
     const { email, tenantId } = await seedTenant({ name: 'Brilho Car' });
-    const res = await call('POST', '/api/auth/login', { body: { email: email.toUpperCase(), password: PASSWORD } });
+    const res = await loginWith(await tokenFor(email));
 
     expect(res.status).toBe(200);
     expect(res.json.success).toBe(true);
@@ -23,54 +25,67 @@ describe('login do lava-jato', () => {
     expect(hashed.n).toBe(1);
   });
 
-  it('senha errada e e-mail inexistente recebem a mesma resposta', async () => {
+  it('recusa tokens forjados, vencidos ou de outro projeto, todos com a mesma resposta', async () => {
     const { email } = await seedTenant();
-    const wrong = await call('POST', '/api/auth/login', { body: { email, password: 'errada123' } });
-    const missing = await call('POST', '/api/auth/login', { body: { email: 'ninguem@teste.com', password: 'errada123' } });
+    const row = await env.DB.prepare('SELECT firebase_uid AS uid FROM users WHERE email = ?').bind(email).first();
+    const identity = { uid: row.uid, email };
+    const now = Math.floor(Date.now() / 1000);
+    const valid = await firebaseToken(identity);
+    const [h, p, sig] = valid.split('.');
+    const forgedPayload = btoa(JSON.stringify({ ...JSON.parse(atob(p.replace(/-/g, '+').replace(/_/g, '/'))), sub: 'outro' })).replace(/=+$/, '');
 
-    expect(wrong.status).toBe(401);
-    expect(missing.status).toBe(401);
-    expect(wrong.json).toEqual(missing.json);
-    expect(wrong.json.error.code).toBe('INVALID_CREDENTIALS');
+    const bad = [
+      `${h}.${forgedPayload}.${sig}`, // conteúdo alterado, assinatura antiga
+      `${h}.${p}.${sig.slice(0, -4)}AAAA`, // assinatura adulterada
+      await firebaseToken(identity, { exp: now - 10 }), // vencido
+      await firebaseToken(identity, { aud: 'outro-projeto' }),
+      await firebaseToken(identity, { iss: 'https://securetoken.google.com/outro-projeto' }),
+      await firebaseToken(identity, { iat: now + 3600 }),
+      await firebaseToken(identity, { email: undefined }),
+      await firebaseToken(identity, {}, { kid: 'chave-desconhecida' }),
+      await firebaseToken(identity, {}, { alg: 'none' }),
+      'abc.def', 'lixo', '', null, 123, { $ne: '' },
+    ];
+    const responses = [];
+    for (const token of bad) responses.push(await loginWith(token));
+    for (const res of responses) {
+      expect(res.status).toBe(401);
+      expect(res.json.error.code).toBe('INVALID_CREDENTIALS');
+    }
   });
 
-  it('informa acesso pendente, bloqueado ou usuário desativado só com a senha correta', async () => {
+  it('conta do Firebase sem cadastro no sistema recebe a mesma resposta de token inválido', async () => {
+    const stranger = await newFirebaseAccount();
+    const res = await loginWith(stranger.idToken);
+    expect(res.status).toBe(401);
+    expect(res.json.error.code).toBe('INVALID_CREDENTIALS');
+  });
+
+  it('informa acesso pendente, bloqueado ou usuário desativado só com token válido', async () => {
     const pending = await seedTenant({ status: 'PENDENTE' });
     const blocked = await seedTenant({ status: 'BLOQUEADO' });
     const inactive = await seedTenant({ active: 0 });
 
-    const codeFor = async (email, password = PASSWORD) => (await call('POST', '/api/auth/login', { body: { email, password } })).json.error.code;
+    const codeFor = async (email) => (await loginWith(await tokenFor(email))).json.error.code;
     expect(await codeFor(pending.email)).toBe('ACCESS_PENDING');
     expect(await codeFor(blocked.email)).toBe('ACCESS_BLOCKED');
     expect(await codeFor(inactive.email)).toBe('USER_INACTIVE');
-    expect(await codeFor(pending.email, 'errada123')).toBe('INVALID_CREDENTIALS');
-  });
-
-  it('bloqueia após 5 tentativas erradas para o mesmo e-mail, mesmo trocando de IP', async () => {
-    const { email } = await seedTenant();
-    for (let i = 0; i < 5; i += 1) {
-      expect((await call('POST', '/api/auth/login', { body: { email, password: 'errada123' } })).status).toBe(401);
-    }
-    const blocked = await call('POST', '/api/auth/login', { body: { email, password: PASSWORD } });
-    expect(blocked.status).toBe(429);
-    expect(blocked.json.error.code).toBe('RATE_LIMITED');
+    expect((await loginWith('token.invalido.x')).json.error.code).toBe('INVALID_CREDENTIALS');
   });
 
   it('bloqueia muitas tentativas vindas do mesmo IP', async () => {
     const ip = '203.0.113.7';
     let last;
-    for (let i = 0; i < 21; i += 1) {
-      last = await call('POST', '/api/auth/login', { ip, body: { email: `${unique()}@teste.com`, password: 'errada123' } });
-    }
+    for (let i = 0; i < 31; i += 1) last = await loginWith('token.invalido.x', { ip });
     expect(last.status).toBe(429);
   });
 
-  it('registra auditoria de falha sem guardar a senha', async () => {
-    const { email, userId } = await seedTenant();
-    await call('POST', '/api/auth/login', { body: { email, password: 'SenhaSecreta99' } });
-    const log = await env.DB.prepare("SELECT * FROM audit_logs WHERE action = 'LOGIN_FAILED' AND entity_id = ?").bind(userId).first();
+  it('registra auditoria de falha com o e-mail e sem o token', async () => {
+    const stranger = await newFirebaseAccount();
+    await loginWith(stranger.idToken);
+    const log = await env.DB.prepare("SELECT * FROM audit_logs WHERE action = 'LOGIN_FAILED' AND details LIKE ?").bind(`%${stranger.email}%`).first();
     expect(log).not.toBeNull();
-    expect(JSON.stringify(log)).not.toContain('SenhaSecreta99');
+    expect(JSON.stringify(log)).not.toContain(stranger.idToken);
     expect(log.ip_hash).toMatch(/^[0-9a-f]{32}$/);
   });
 });
@@ -108,35 +123,42 @@ describe('sessão', () => {
   });
 });
 
-describe('troca de senha', () => {
-  it('exige a senha atual, valida a nova e encerra as outras sessões', async () => {
+describe('troca de senha (feita no Firebase)', () => {
+  it('confirma com token de login recente do próprio usuário e encerra as outras sessões', async () => {
     const { email } = await seedTenant();
     const tokenA = await login(email);
     const tokenB = await login(email);
 
-    const wrong = await call('POST', '/api/auth/password', { token: tokenA, body: { current_password: 'errada123', new_password: 'novaSenha1' } });
-    expect(wrong.json.error.code).toBe('INVALID_PASSWORD');
-
-    const weak = await call('POST', '/api/auth/password', { token: tokenA, body: { current_password: PASSWORD, new_password: 'curta' } });
-    expect(weak.status).toBe(400);
-
-    const ok = await call('POST', '/api/auth/password', { token: tokenA, body: { current_password: PASSWORD, new_password: 'novaSenha1' } });
+    const ok = await call('POST', '/api/auth/password', { token: tokenA, body: { id_token: await tokenFor(email) } });
     expect(ok.status).toBe(200);
     expect((await call('GET', '/api/auth/me', { token: tokenA })).status).toBe(200);
     expect((await call('GET', '/api/auth/me', { token: tokenB })).status).toBe(401);
-    await expect(login(email, 'novaSenha1')).resolves.toBeTruthy();
+    const log = await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_logs WHERE action = 'PASSWORD_CHANGED'").first();
+    expect(log.n).toBeGreaterThan(0);
+  });
+
+  it('recusa login antigo, token de outra pessoa e token inválido', async () => {
+    const { email } = await seedTenant();
+    const other = await seedTenant();
+    const token = await login(email);
+    const old = await tokenFor(email, { auth_time: Math.floor(Date.now() / 1000) - 3600 });
+    for (const id_token of [old, await tokenFor(other.email), 'lixo']) {
+      expect([400, 401]).toContain((await call('POST', '/api/auth/password', { token, body: { id_token } })).status);
+    }
+    expect((await call('GET', '/api/auth/me', { token })).status).toBe(200);
   });
 });
 
 describe('solicitação de acesso', () => {
   const request = (overrides = {}, ip) => call('POST', '/api/access-requests', {
     ip,
-    body: { business_name: 'Auto Spa', owner_name: 'Fernanda', email: `${unique()}@teste.com`, phone: '(11) 98888-7777', password: 'senha1234', ...overrides },
+    body: { business_name: 'Auto Spa', owner_name: 'Fernanda', phone: '(11) 98888-7777', ...overrides },
   });
 
   it('cria lava-jato PENDENTE com o solicitante como ADMIN', async () => {
-    const email = `${unique()}@teste.com`;
-    const res = await request({ email });
+    const account = await newFirebaseAccount();
+    const { email } = account;
+    const res = await request({ id_token: account.idToken });
     expect(res.status).toBe(201);
 
     const row = await env.DB.prepare(
@@ -144,33 +166,36 @@ describe('solicitação de acesso', () => {
     ).bind(email).first();
     expect(row).toEqual({ status: 'PENDENTE', phone: '11988887777', role: 'ADMIN' });
 
-    const loginRes = await call('POST', '/api/auth/login', { body: { email, password: 'senha1234' } });
+    expect(row.password_hash).toBeUndefined();
+    const loginRes = await loginWith(await tokenFor(email));
     expect(loginRes.json.error.code).toBe('ACCESS_PENDING');
   });
 
   it('e-mail já cadastrado recebe a mesma resposta e não cria outro lava-jato', async () => {
     const { email } = await seedTenant();
     const before = await env.DB.prepare('SELECT COUNT(*) AS n FROM tenants').first();
-    const res = await request({ email });
+    const res = await request({ id_token: await tokenFor(email) });
     const after = await env.DB.prepare('SELECT COUNT(*) AS n FROM tenants').first();
     expect(res.status).toBe(201);
     expect(after.n).toBe(before.n);
   });
 
   it('valida os dados e recusa campos extras', async () => {
-    expect((await request({ business_name: 'A' })).status).toBe(400);
-    expect((await request({ email: 'invalido' })).status).toBe(400);
-    expect((await request({ password: 'semnumero' })).status).toBe(400);
-    expect((await request({ phone: '123' })).status).toBe(400);
-    expect((await request({ business_name: 'x'.repeat(81) })).status).toBe(400);
-    expect((await request({ status: 'ATIVO' })).status).toBe(400);
-    expect((await request({ role: 'SUPER_ADMIN' })).status).toBe(400);
+    const t = async () => (await newFirebaseAccount()).idToken;
+    expect((await request({ id_token: await t(), business_name: 'A' })).status).toBe(400);
+    expect((await request({ id_token: 'lixo' })).status).toBe(401);
+    expect((await request({})).status).toBe(401);
+    expect((await request({ id_token: await t(), phone: '123' })).status).toBe(400);
+    expect((await request({ id_token: await t(), business_name: 'x'.repeat(81) })).status).toBe(400);
+    expect((await request({ id_token: await t(), status: 'ATIVO' })).status).toBe(400);
+    expect((await request({ id_token: await t(), role: 'SUPER_ADMIN' })).status).toBe(400);
+    expect((await request({ id_token: await t(), email: 'outro@teste.com' })).status).toBe(400); // e-mail só vem do token
   });
 
   it('limita solicitações por IP', async () => {
     const ip = '198.51.100.9';
-    for (let i = 0; i < 3; i += 1) expect((await request({}, ip)).status).toBe(201);
-    expect((await request({}, ip)).status).toBe(429);
+    for (let i = 0; i < 3; i += 1) expect((await request({ id_token: (await newFirebaseAccount()).idToken }, ip)).status).toBe(201);
+    expect((await request({ id_token: (await newFirebaseAccount()).idToken }, ip)).status).toBe(429);
   });
 });
 

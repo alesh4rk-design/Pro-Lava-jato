@@ -5,6 +5,7 @@
 import { config } from './config.js';
 import { getSession, homeFor, SCOPE } from './session.js';
 import { logout } from './auth.js';
+import { changePassword as changeFirebasePassword } from './firebase.js';
 import { api } from './api.js';
 import { isStrongPassword } from './format.js';
 import { el, icon, field, openModal, toast, setBusy, validateFields } from './ui.js';
@@ -89,7 +90,8 @@ function openChangePassword() {
           if (!valid) return;
           setBusy(button, true);
           try {
-            await api.post('/auth/password', { current_password: current.value, new_password: next.value });
+            const idToken = await changeFirebasePassword(session.user.email, current.value, next.value);
+            await api.post('/auth/password', { id_token: idToken });
             close();
             toast('Senha alterada. Outros aparelhos foram desconectados.', { type: 'success' });
           } catch (error) {

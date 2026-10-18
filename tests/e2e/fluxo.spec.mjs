@@ -8,9 +8,10 @@ test.describe.configure({ mode: 'serial' });
 const SYSTEM = { email: 'admin@sistema.test', password: 'Admin12345' };
 const OWNER = { email: 'maria@central.test', password: 'Lava12345', business: 'Lava Rápido Central' };
 const OPERATOR = { email: 'joao@central.test', password: 'Opera1234' };
+const NEW_PASSWORD = 'NovaSenha789';
 
-// Erros de console esperados: respostas 403/409 dos testes de bloqueio e de estoque insuficiente.
-const EXPECTED_ERRORS = /status of (403|409)/;
+// Erros de console esperados: respostas 400/403/409 dos testes de senha errada, bloqueio e estoque insuficiente.
+const EXPECTED_ERRORS = /status of (400|403|409)/;
 
 /** Abre uma página que falha o teste se houver erro inesperado no console ou na página. */
 async function openPage(browser, playwright) {
@@ -217,4 +218,40 @@ test('nenhuma tela rola para o lado em 360px', async () => {
   await owner.goto('lancamento.html?tipo=receita');
   await expect(owner.locator('dialog[open]')).toBeVisible();
   expect(await noHorizontalScroll(owner), 'formulário de receita').toBe(true);
+});
+
+test('esqueci minha senha, senha errada e troca de senha pelo Firebase', async ({ browser, playwright }) => {
+  const visitor = await openPage(browser, playwright);
+  await visitor.goto('login.html');
+  await visitor.fill('#login-email', OWNER.email);
+  await visitor.fill('#login-password', 'senhaErrada1');
+  await visitor.click('#login-submit');
+  await expect(visitor.locator('#form-alert')).toContainText('E-mail ou senha inválidos');
+
+  await visitor.click('#forgot');
+  await expect(visitor.locator('#form-alert')).toContainText('enviamos um link');
+
+  // Dono troca a própria senha em Conta → Trocar senha.
+  await owner.goto('dashboard.html');
+  await owner.click('button[aria-label="Conta"]');
+  await owner.click('dialog button:has-text("Trocar senha")');
+  await owner.fill('#p-current', OWNER.password);
+  await owner.fill('#p-new', NEW_PASSWORD);
+  await owner.fill('#p-confirm', NEW_PASSWORD);
+  await owner.click('dialog .btn-primary');
+  await expect(lastToast(owner)).toContainText('Senha alterada');
+
+  // A senha antiga deixa de valer e a nova entra.
+  await visitor.fill('#login-password', OWNER.password);
+  await visitor.click('#login-submit');
+  await expect(visitor.locator('#form-alert')).toContainText('E-mail ou senha inválidos');
+  await login(visitor, { email: OWNER.email, password: NEW_PASSWORD });
+  expect(visitor.problems).toEqual([]);
+
+  // Administrador do lava-jato manda o e-mail de redefinição ao operador.
+  await owner.goto('usuarios.html');
+  await owner.locator('.user-card', { hasText: 'João Operador' }).click();
+  await owner.click('dialog button:has-text("Redefinir senha")');
+  await owner.click('dialog button:has-text("Enviar e-mail")');
+  await expect(lastToast(owner)).toContainText('E-mail de redefinição enviado');
 });

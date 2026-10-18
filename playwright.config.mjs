@@ -15,6 +15,7 @@ export default defineConfig({
   },
   projects: [{ name: 'celular', use: { ...devices['Pixel 5'], viewport: { width: 360, height: 760 } } }],
   webServer: [
+    { command: 'node tests/e2e/fake-firebase.mjs', port: 9099, reuseExistingServer: false },
     { command: 'node tests/e2e/serve.mjs', url: 'http://localhost:5173/login.html', reuseExistingServer: false },
     { command: 'sh worker/scripts/e2e-api.sh', url: 'http://127.0.0.1:8787/api/health', timeout: 120_000, reuseExistingServer: false },
   ],

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { call, financeFixture, env, todayIso, unique } from './helpers.js';
+import { call, financeFixture, env, todayIso, unique, newFirebaseAccount } from './helpers.js';
 import { addDays } from '../src/lib/dates.js';
 
 async function post(f, path, body) {
@@ -125,8 +125,8 @@ describe('dashboard', () => {
 
 describe('categorias', () => {
   it('novo lava-jato recebe categorias padrão', async () => {
-    const email = `${unique()}@teste.com`;
-    await call('POST', '/api/access-requests', { body: { business_name: 'Novo LJ', owner_name: 'Dona', email, password: 'senha1234' } });
+    const { email, idToken } = await newFirebaseAccount();
+    await call('POST', '/api/access-requests', { body: { business_name: 'Novo LJ', owner_name: 'Dona', id_token: idToken } });
     const row = await env.DB.prepare(
       "SELECT COUNT(*) AS n FROM categories c JOIN users u ON u.tenant_id = c.tenant_id WHERE u.email = ? AND c.kind = 'DESPESA'",
     ).bind(email).first();
