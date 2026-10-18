@@ -5,6 +5,7 @@ import { formatCents } from './format.js';
 import { el, chipGroup, openModal, toast, runBusy } from './ui.js';
 import { getCategories } from './catalog.js';
 import { commonFields, sectionLabel, diff, EXPENSE_TYPE_LABELS } from './entry-form.js';
+import { newCategoryButton } from './categoria-rapida.js';
 
 export async function openExpenseForm({ entry = null, onSaved } = {}) {
   let categories = [];
@@ -28,12 +29,19 @@ export async function openExpenseForm({ entry = null, onSaved } = {}) {
     onChange: (opt) => { if (opt.type) type.value = opt.type; },
   });
   const categoryError = el('span', { class: 'field-error' });
+  const addCategory = newCategoryButton((created, all) => {
+    categories = all;
+    category.setOptions(all.map((c) => ({ value: c.id, label: c.name, type: c.default_expense_type })), created.id);
+    if (created.default_expense_type) type.value = created.default_expense_type;
+    categoryError.textContent = '';
+  });
 
   const form = el('form', { class: 'form', novalidate: true },
     common.amountField,
     el('div', { class: 'field' },
       sectionLabel('Categoria'),
-      categories.length ? category.element : el('p', { class: 'hint' }, 'Nenhuma categoria ativa. Peça ao administrador para cadastrar.'),
+      el('div', { class: 'category-box' }, category.element, categories.length || addCategory ? null : el('p', { class: 'hint' }, 'Nenhuma categoria ativa. Peça ao administrador para cadastrar.')),
+      addCategory,
       categoryError,
     ),
     el('div', { class: 'field' },

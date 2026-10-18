@@ -145,3 +145,32 @@ test('textos das despesas recorrentes', () => {
   assert.equal(scheduleText({ frequency: 'MENSAL', month_day: 31 }), 'Todo último dia do mês');
   assert.deepEqual([0, 1, 2, 7].map(whenText), ['hoje', 'amanhã', 'em 2 dias', 'em 7 dias']);
 });
+
+import { whatsappNumber, vehicleText, renderMessage, whatsappUrl } from '../frontend/js/whatsapp.js';
+
+test('whatsappNumber: acrescenta 55, aceita 55 já presente e rejeita o resto', () => {
+  assert.equal(whatsappNumber('11988887777'), '5511988887777');
+  assert.equal(whatsappNumber('1133334444'), '551133334444');
+  assert.equal(whatsappNumber('5511988887777'), '5511988887777');
+  assert.equal(whatsappNumber('(11) 98888-7777'), '5511988887777');
+  for (const bad of ['', '123', '119888877', '99999999999999', null, undefined, '4411988887777']) assert.equal(whatsappNumber(bad), '', String(bad));
+});
+
+test('renderMessage: troca os campos e não deixa buracos quando faltam dados', () => {
+  const body = 'Olá, {nome}! A limpeza do seu veículo {veiculo} já foi concluída. — {lavajato}';
+  assert.equal(renderMessage(body, { name: 'João', vehicle: 'Gol', plate: 'ABC1D23' }, 'Brilho Car'),
+    'Olá, João! A limpeza do seu veículo (Gol · ABC1D23) já foi concluída. — Brilho Car');
+  assert.equal(renderMessage(body, { name: 'João' }, 'Brilho Car'), 'Olá, João! A limpeza do seu veículo já foi concluída. — Brilho Car');
+  assert.equal(renderMessage('Oi {nome}, placa {placa}.', { name: 'Ana', plate: 'XYZ9K88' }), 'Oi Ana, placa XYZ9K88.');
+  assert.equal(renderMessage('Oi, {nome}! — {lavajato}', { name: 'Ana' }, ''), 'Oi, Ana!');
+  assert.equal(renderMessage('{cpf} {nome}', { name: 'Ana' }), '{cpf} Ana'); // campo desconhecido não é trocado
+  assert.equal(vehicleText({ vehicle: 'Civic' }), 'Civic');
+  assert.equal(vehicleText({ plate: 'AAA1B11' }), 'AAA1B11');
+});
+
+test('whatsappUrl: só dígitos no número e texto codificado (sem injetar parâmetros)', () => {
+  const url = whatsappUrl('(11) 98888-7777', 'Olá & tchau? #1 a=b\nlinha 2');
+  assert.equal(url, 'https://wa.me/5511988887777?text=Ol%C3%A1%20%26%20tchau%3F%20%231%20a%3Db%0Alinha%202');
+  assert.equal(whatsappUrl('abc', 'oi'), '');
+  assert.equal(new URL(url).host, 'wa.me');
+});

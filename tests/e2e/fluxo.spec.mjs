@@ -191,7 +191,7 @@ test('operador: lança, mas não vê custos nem áreas do administrador', async 
   await expect(lastToast(operator)).toContainText('registrada');
 
   await operator.goto('mais.html');
-  await expect(operator.locator('.menu-link:visible')).toHaveText(['Produtos e estoque', 'Serviços']);
+  await expect(operator.locator('.menu-link:visible')).toHaveText(['Clientes e mensagens', 'Produtos e estoque', 'Serviços']);
   for (const page of ['usuarios.html', 'categorias.html', 'auditoria.html', 'configuracoes.html']) {
     await operator.goto(page);
     await operator.waitForURL(/dashboard\.html/);
@@ -342,4 +342,97 @@ test('despesas recorrentes: cadastrar, lançar na hora, alerta de vencimento e p
   await operator.goto('recorrentes.html');
   await operator.waitForURL(/dashboard\.html/);
   expect(await noHorizontalScroll(owner), 'recorrentes').toBe(true);
+});
+
+test('categoria de despesa criada na hora do lançamento (só administrador)', async () => {
+  await owner.goto('lancamento.html?tipo=despesa');
+  await owner.fill('#expense-amount', '180,00');
+  await owner.click('dialog button:has-text("+ Nova categoria")');
+  await owner.fill('#nc-name', 'Energia elétrica');
+  await owner.click('dialog[open]:has-text("Nova categoria de despesa") .btn-primary');
+  await expect(lastToast(owner)).toContainText('Categoria criada');
+  await expect(owner.locator('dialog [aria-label="Categoria"] .chip[aria-pressed="true"]')).toHaveText('Energia elétrica');
+  await owner.click('dialog .btn-danger');
+  await expect(lastToast(owner)).toContainText('Despesa de R$ 180,00 registrada');
+
+  await operator.goto('lancamento.html?tipo=despesa');
+  await expect(operator.locator('dialog[open]')).toBeVisible();
+  await expect(operator.locator('dialog button:has-text("+ Nova categoria")')).toHaveCount(0);
+});
+
+test('clientes e mensagens prontas para WhatsApp', async () => {
+  await owner.goto('mais.html');
+  await owner.click('a.menu-link:has-text("Clientes e mensagens")');
+  await owner.waitForURL(/clientes\.html/);
+  await expect(owner.locator('.state')).toContainText('Nenhum cliente cadastrado');
+
+  await owner.click('#new-item');
+  await owner.fill('#c-name', 'João da Silva');
+  await owner.fill('#c-phone', '21977665544');
+  await owner.fill('#c-vehicle', 'Gol branco');
+  await owner.fill('#c-plate', 'abc-1d23');
+  await owner.click('dialog .btn-primary');
+  const card = owner.locator('.customer-card', { hasText: 'João da Silva' });
+  await expect(card).toContainText('(21) 97766-5544');
+  await expect(card).toContainText('Gol branco · ABC1D23');
+  await expect(card).toContainText('Ainda sem contato');
+
+  // Busca por placa
+  await owner.fill('#customer-search', 'abc1d');
+  await expect(owner.locator('.customer-card')).toHaveCount(1);
+  await owner.fill('#customer-search', 'zzzz');
+  await expect(owner.locator('.state')).toContainText('Nenhum cliente encontrado');
+  await owner.fill('#customer-search', '');
+
+  // Mensagem pronta: o texto vem preenchido e o link do WhatsApp é montado (sem enviar nada sozinho)
+  await owner.evaluate(() => { window.__opened = []; window.open = (url) => { window.__opened.push(url); return null; }; });
+  await owner.locator('.customer-card', { hasText: 'João da Silva' }).locator('button:has-text("WhatsApp")').click();
+  await expect(owner.locator('#send-text')).toHaveValue(/Olá, João da Silva! A limpeza do seu veículo \(Gol branco · ABC1D23\) já foi concluída/);
+  await owner.click('dialog .chip:has-text("Agradecimento")');
+  await expect(owner.locator('#send-text')).toHaveValue(/Obrigado por escolher o Brilho Central/);
+  await owner.click('dialog .chip:has-text("Veículo pronto")');
+  await owner.click('dialog .btn-success');
+  const opened = await owner.evaluate(() => window.__opened);
+  expect(opened).toHaveLength(1);
+  const url = new URL(opened[0]);
+  expect(url.origin + url.pathname).toBe('https://wa.me/5521977665544');
+  expect(url.searchParams.get('text')).toContain('já foi concluída');
+  await owner.reload();
+  await expect(owner.locator('.customer-card', { hasText: 'João da Silva' })).toContainText('Último contato:');
+
+  // O administrador edita uma mensagem pronta e cria outra, com prévia
+  await owner.click('#tabs [data-tab="mensagens"]');
+  await expect(owner.locator('#template-list .card')).toHaveCount(5);
+  await owner.click('#new-item');
+  await owner.fill('#t-title', 'Aviso de horário');
+  await owner.fill('#t-body', 'Olá, {nome}! Hoje fechamos às 18h.');
+  await expect(owner.locator('.message-preview')).toHaveText('Olá, Carlos Silva! Hoje fechamos às 18h.');
+  await owner.click('dialog .btn-primary');
+  await expect(owner.locator('#template-list .card')).toHaveCount(6);
+
+  // Operador cadastra e envia, mas não gerencia as mensagens
+  await operator.goto('clientes.html');
+  await expect(operator.locator('#tabs [data-tab="mensagens"]')).toBeHidden();
+  await expect(operator.locator('.customer-card', { hasText: 'João da Silva' })).toBeVisible();
+  await operator.locator('.customer-card', { hasText: 'João da Silva' }).locator('button:has-text("WhatsApp")').click();
+  await expect(operator.locator('dialog [aria-label="Mensagens prontas"] .chip')).toHaveCount(6);
+  await operator.click('dialog button:has-text("Cancelar")');
+
+  // Auditoria registra sem telefone
+  await owner.goto('auditoria.html');
+  await expect(owner.locator('.audit-row', { hasText: 'Abriu o WhatsApp para João da Silva' })).toContainText('Veículo pronto');
+  await expect(owner.locator('#audit-list')).not.toContainText('977665544');
+  expect(await noHorizontalScroll(owner), 'auditoria').toBe(true);
+});
+
+test('telas novas não rolam para o lado em 360px', async () => {
+  for (const name of ['clientes', 'recorrentes']) {
+    await owner.goto(`${name}.html`);
+    await owner.waitForLoadState('networkidle');
+    expect(await noHorizontalScroll(owner), name).toBe(true);
+  }
+  await owner.goto('clientes.html');
+  await owner.locator('.customer-card').first().locator('button:has-text("WhatsApp")').click();
+  await expect(owner.locator('dialog[open]')).toBeVisible();
+  expect(await noHorizontalScroll(owner), 'envio de mensagem').toBe(true);
 });

@@ -84,6 +84,11 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET / POST | `/api/revenues` · `/api/expenses` | lava-jato (lançar: ADMIN e OPERADOR) |
 | GET | `/api/revenues/:id` · `/api/expenses/:id` | lava-jato |
 | PUT / DELETE | `/api/revenues/:id` · `/api/expenses/:id` | ADMIN (DELETE = cancelar) |
+| GET / POST | `/api/customers` | lava-jato (clientes; busca `?q=`, paginação `?page=`) |
+| PUT | `/api/customers/:id` | lava-jato (editar, desativar) |
+| POST | `/api/customers/:id/contact` | lava-jato (registra que o WhatsApp foi aberto para o cliente) |
+| GET | `/api/message-templates` | lava-jato (mensagens prontas) |
+| POST / PUT | `/api/message-templates` · `/:id` | ADMIN (criar, editar, desativar) |
 | GET / POST | `/api/recurring-expenses` | ADMIN (lista; cria despesa recorrente) |
 | PUT | `/api/recurring-expenses/:id` | ADMIN (editar, pausar, retomar) |
 | GET | `/api/recurring-expenses/upcoming?days=` | ADMIN (próximos vencimentos, alimenta o aviso do Início) |
@@ -108,6 +113,13 @@ Períodos: `period=today|7d|month|last_month|year` ou `period=custom&start=AAAA-
 - O sistema lança a despesa sozinho em cada vencimento: Cron diário (03:17 em Brasília) e ao abrir o app. Cada lançamento é uma despesa comum, que pode ser editada ou cancelada no Caixa; cancelar não faz o lançamento voltar.
 - Nunca lança a mesma data duas vezes (nem com execuções simultâneas). Pausar não acumula: ao retomar, segue de hoje.
 - O Início mostra um aviso com os vencimentos dos próximos 7 dias (destaque para hoje e amanhã); as diárias ficam fora do aviso.
+
+**Clientes e WhatsApp** (Mais → Clientes e mensagens; administrador e operador)
+- Cadastro de clientes com nome, telefone (com DDD), veículo, placa e observação; busca por nome, telefone, placa ou veículo; desativar esconde sem apagar.
+- Mensagens prontas (por lava-jato; já vêm 5, como "Veículo pronto" e "Agradecimento"); só o administrador cria e edita. Campos: `{nome}`, `{veiculo}`, `{placa}`, `{lavajato}`.
+- "WhatsApp" abre o `wa.me` com o texto preenchido; a pessoa confere e toca em enviar. Nenhuma mensagem passa pelo servidor nem é enviada sozinha.
+- O telefone e as observações dos clientes ficam fora da auditoria; ela registra só o nome e a mensagem usada.
+- Administradores criam categorias de despesa na hora do lançamento ("+ Nova categoria").
 
 **Estoque e custos**
 - Quantidades na menor unidade (ml, g, un); custo médio em micro-reais por unidade (R$ 17,00/L = 17.000 µR/ml).
