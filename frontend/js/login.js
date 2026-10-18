@@ -7,6 +7,7 @@ import { isValidEmail, isStrongPassword } from './format.js';
 import { setBusy, setFieldError, validateFields } from './ui.js';
 import { registerServiceWorker } from './pwa.js';
 import { sendPasswordReset } from './firebase.js';
+import { setupInstall } from './install.js';
 
 const MODES = {
   login: {
@@ -154,6 +155,7 @@ function init() {
   $('toggle-system').addEventListener('click', () => setMode(mode === 'system' ? 'login' : 'system'));
   setupPasswordToggles();
   if (new URLSearchParams(location.search).has('expirada')) showAlert('Sua sessão expirou. Entre novamente.');
+  setupInstall();
   registerServiceWorker();
 }
 

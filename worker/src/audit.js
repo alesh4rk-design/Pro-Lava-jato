@@ -64,10 +64,10 @@ export const ACTION_GROUPS = {
   LANCAMENTOS: ['REVENUE_CREATED', 'REVENUE_UPDATED', 'REVENUE_CANCELLED', 'EXPENSE_CREATED', 'EXPENSE_UPDATED', 'EXPENSE_CANCELLED'],
   ESTOQUE: ['PRODUCT_CREATED', 'PRODUCT_UPDATED', 'PRODUCT_MOVEMENT'],
   CADASTROS: ['CATEGORY_CREATED', 'CATEGORY_UPDATED', 'SERVICE_CREATED', 'SERVICE_UPDATED', 'SERVICE_PRICE_CHANGED', 'SERVICE_COSTS_CHANGED'],
-  USUARIOS: ['SETTINGS_CHANGED', 'USER_CREATED', 'USER_UPDATED', 'PERMISSION_CHANGED', 'PASSWORD_RESET', 'ACCESS_REQUESTED'],
+  USUARIOS: ['SETTINGS_CHANGED', 'USER_CREATED', 'USER_UPDATED', 'PROFILE_UPDATED', 'PERMISSION_CHANGED', 'PASSWORD_RESET', 'ACCESS_REQUESTED'],
 };
 
-const PLATFORM_ACTIONS = ['ACCESS_REQUESTED', 'ACCESS_REQUEST_DUPLICATE', 'TENANT_APPROVED', 'TENANT_BLOCKED', 'TENANT_UNBLOCKED', 'SYSTEM_LOGIN', 'SYSTEM_LOGIN_FAILED'];
+const PLATFORM_ACTIONS = ['ACCESS_REQUESTED', 'ACCESS_REQUEST_DUPLICATE', 'TENANT_APPROVED', 'TENANT_BLOCKED', 'TENANT_UNBLOCKED', 'TENANT_UPDATED', 'SYSTEM_LOGIN', 'SYSTEM_LOGIN_FAILED'];
 const PAGE_SIZE = 50;
 const timeZone = (env) => env.TIMEZONE || 'America/Sao_Paulo';
 
@@ -101,6 +101,7 @@ export async function listTenantAudit({ env, auth, url }) {
        FROM audit_logs a
        LEFT JOIN users u ON a.actor_type = 'USER' AND u.id = a.actor_id AND u.tenant_id = a.tenant_id
       WHERE a.tenant_id = ? AND a.created_at >= ? AND a.created_at < ?${inList('a.action', f.actions)}
+        AND a.actor_type <> 'SYSTEM_ADMIN' -- ações do administrador do sistema nunca aparecem para o lava-jato
         AND (? IS NULL OR (a.actor_type = 'USER' AND a.actor_id = ?))
       ORDER BY a.id DESC LIMIT ? OFFSET ?`,
   ).bind(auth.tenantId, f.range.from, f.range.to, ...(f.actions ?? []), userId, userId, PAGE_SIZE + 1, (f.page - 1) * PAGE_SIZE).all();

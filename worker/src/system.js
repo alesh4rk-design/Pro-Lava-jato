@@ -1,7 +1,7 @@
 // Administração da plataforma (somente administrador do sistema):
 // listar lava-jatos e autorizar, bloquear ou desbloquear acessos.
 
-import { ok, errors } from './lib/http.js';
+import { ok, errors, readJson } from './lib/http.js';
 import * as v from './lib/validate.js';
 import { auditStatement, actorOf } from './audit.js';
 
@@ -73,4 +73,30 @@ export async function changeTenantStatus({ env, auth, params, ip }) {
   if (update.meta.changes !== 1) throw errors.invalidState();
 
   return ok({ ...tenant, status: transition.to });
+}
+
+/** Corrige nome e telefone de um lava-jato (ex.: erro de digitação na solicitação de acesso). */
+export async function updateTenant({ request, env, auth, params, ip }) {
+  const tenantId = v.id(params.id);
+  const body = v.onlyFields(await readJson(request), ['business_name', 'phone']);
+  const changes = {};
+  if (body.business_name !== undefined) changes.business_name = v.text(body.business_name, { field: 'o nome do lava-jato', min: 2, max: 80 });
+  if (body.phone !== undefined) changes.phone = v.phone(body.phone);
+  if (!Object.keys(changes).length) throw errors.validation('Nada para alterar.');
+
+  const current = await env.DB.prepare('SELECT id, business_name, phone FROM tenants WHERE id = ?').bind(tenantId).first();
+  if (!current) throw errors.notFound('Cliente não encontrado.');
+  const changed = Object.keys(changes).filter((c) => changes[c] !== current[c]);
+  if (changed.length) {
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE tenants SET ${changed.map((c) => `${c} = ?`).join(', ')}, updated_at = ? WHERE id = ?`)
+        .bind(...changed.map((c) => changes[c]), new Date().toISOString(), tenantId),
+      await auditStatement(env, {
+        tenantId, actor: actorOf(auth), action: 'TENANT_UPDATED', entity: 'tenant', entityId: tenantId,
+        details: { business_name: changes.business_name ?? current.business_name, before: Object.fromEntries(changed.map((c) => [c, current[c]])), after: Object.fromEntries(changed.map((c) => [c, changes[c]])) },
+        ip,
+      }),
+    ]);
+  }
+  return ok({ id: tenantId, business_name: changes.business_name ?? current.business_name, phone: changes.phone ?? current.phone });
 }

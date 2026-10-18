@@ -2,7 +2,7 @@
 
 import { session } from './app.js';
 import { api } from './api.js';
-import { el, icon, field, chipGroup, toast, openModal, stateView, runBusy, validateFields } from './ui.js';
+import { el, icon, field, chipGroup, toast, openModal, stateView, runBusy, validateFields, editChip } from './ui.js';
 import { EXPENSE_TYPE_LABELS, sectionLabel } from './entry-form.js';
 import { invalidateCatalog } from './catalog.js';
 
@@ -73,7 +73,7 @@ function categoryCard(category) {
     ),
     el('div', { class: 'tenant-actions' },
       category.default_expense_type ? el('span', { class: 'badge badge-primary' }, EXPENSE_TYPE_LABELS[category.default_expense_type]) : null,
-      el('span', { class: 'chevron' }, icon('chevron-right', 'icon icon-sm')),
+      editChip(),
     ),
   );
 }

@@ -32,6 +32,7 @@ const ROUTES = [
   ['POST', '/api/auth/login', PUBLIC, [], authRoutes.tenantLogin],
   ['POST', '/api/auth/logout', TENANT, [], authRoutes.logout],
   ['GET', '/api/auth/me', TENANT, [], authRoutes.me],
+  ['PUT', '/api/auth/me', TENANT, [], authRoutes.updateMe],
   ['POST', '/api/auth/password', TENANT, [], authRoutes.changePassword],
   ['POST', '/api/access-requests', PUBLIC, [], authRoutes.requestAccess],
 
@@ -86,6 +87,7 @@ const ROUTES = [
   ['POST', '/api/system/auth/logout', SYSTEM, [], authRoutes.logout],
   ['GET', '/api/system/tenants', SYSTEM, [], system.listTenants],
   ['GET', '/api/system/audit', SYSTEM, [], listSystemAudit],
+  ['PUT', '/api/system/tenants/:id', SYSTEM, [], system.updateTenant],
   ['POST', '/api/system/tenants/:id/:action', SYSTEM, [], system.changeTenantStatus],
 ].map(([method, path, scope, roles, handler]) => ({
   method,

@@ -729,3 +729,87 @@ textarea.input {
   font-weight: 700;
   text-align: center;
 }
+
+/* Convite para instalar o app (flutuante, acima da navegação inferior) */
+.install-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--nav-h) + var(--safe-bottom) + var(--space-3));
+  z-index: 40;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  width: min(calc(100% - 2 * var(--space-4)), 480px);
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-50%);
+  animation: install-in 0.25s ease-out;
+}
+
+.install-banner img { border-radius: var(--radius-sm); }
+
+.install-banner-text { display: grid; gap: 2px; font-size: var(--fs-xs); }
+.install-banner-text strong { font-size: var(--fs-sm); }
+.install-banner-text span { color: var(--text-muted); }
+
+.install-banner .btn-primary { grid-column: 1 / -1; width: 100%; }
+
+/* Enquanto o aviso está aberto, a página ganha espaço no fim para nada ficar escondido atrás dele. */
+body.install-open { padding-bottom: 170px; }
+
+.install-banner.no-nav { bottom: calc(var(--safe-bottom) + var(--space-4)); }
+
+@keyframes install-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .install-banner { animation: none; }
+}
+
+.install-steps { display: grid; gap: var(--space-3); margin: 0; padding-left: var(--space-5); }
+.install-steps .icon { vertical-align: -3px; }
+
+/* Indicação visível de que o cartão pode ser editado */
+.edit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Botão "voltar" no topo das telas internas */
+.header-back { flex: none; margin-left: calc(var(--space-2) * -1); }
+
+/* Aviso de sem conexão */
+.offline-bar {
+  position: sticky;
+  top: calc(var(--header-h) + var(--safe-top));
+  z-index: 19;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.btn-sm { min-height: 36px; padding: 0 var(--space-3); font-size: var(--fs-xs); }
+.list-row .btn-sm { flex: none; margin-left: var(--space-2); }
+
+.tenant-edit { justify-self: start; margin-left: calc(var(--space-3) * -1); }
