@@ -486,6 +486,51 @@ test('chave PIX: cadastro em Configurações e mensagem pronta com a chave', asy
   expect(await noHorizontalScroll(owner), 'configurações').toBe(true);
 });
 
+test('usuários: só operadores e no máximo 2 por lava-jato', async () => {
+  await owner.goto('usuarios.html');
+  await expect(owner.locator('#limit-hint')).toContainText('Operadores ativos: 1 de 2');
+  await owner.click('#new-user');
+  await expect(owner.locator('dialog[open] input[name="role"]')).toHaveCount(0); // não há escolha de perfil
+  await expect(owner.locator('dialog[open]')).toContainText('entra como operador');
+  await owner.fill('#u-name', 'Ana Operadora');
+  await owner.fill('#u-email', 'ana@central.test');
+  await owner.fill('#u-password', 'Opera5678');
+  await owner.click('dialog .btn-primary');
+  await expect(owner.locator('.user-card', { hasText: 'Ana Operadora' })).toBeVisible();
+  await expect(owner.locator('#limit-hint')).toContainText('2 de 2');
+
+  // Terceiro operador: recusado antes mesmo de criar a conta
+  await owner.click('#new-user');
+  await expect(lastToast(owner)).toContainText('Limite de 2 operadores atingido');
+  await expect(owner.locator('dialog[open]')).toHaveCount(0);
+
+  // Editar: o perfil aparece só como informação; desativar libera a vaga
+  await owner.locator('.user-card', { hasText: 'Ana Operadora' }).click();
+  await expect(owner.locator('dialog[open] input[name="role"]')).toHaveCount(0);
+  await expect(owner.locator('dialog[open]')).toContainText('O perfil não pode ser alterado');
+  await owner.locator('dialog[open] label.switch').click();
+  await owner.click('dialog[open] .btn-primary');
+  await owner.click('dialog[open] .btn-danger');
+  await expect(lastToast(owner)).toContainText('Usuário atualizado');
+  await expect(owner.locator('#limit-hint')).toContainText('1 de 2');
+
+  // Reativar quando já há 2 ativos não passa do limite; aqui há vaga, então reativa
+  await owner.locator('.user-card', { hasText: 'Ana Operadora' }).click();
+  await owner.locator('dialog[open] label.switch').click();
+  await owner.click('dialog[open] .btn-primary');
+  await expect(lastToast(owner)).toContainText('Usuário atualizado');
+  await expect(owner.locator('#limit-hint')).toContainText('2 de 2');
+
+  // A API também recusa quem tentar contornar a tela
+  const result = await owner.evaluate(async () => {
+    const { token } = JSON.parse(localStorage.getItem('lj.session'));
+    const r = await fetch('http://127.0.0.1:8787/api/users', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Intruso', id_token: 'x', role: 'ADMIN' }) });
+    return { status: r.status, body: await r.json() };
+  });
+  expect(result.status).toBe(400);
+  expect(result.body.error.message).toBe('Só é possível cadastrar operadores.');
+});
+
 test('telas novas não rolam para o lado em 360px', async () => {
   for (const name of ['clientes', 'recorrentes']) {
     await owner.goto(`${name}.html`);

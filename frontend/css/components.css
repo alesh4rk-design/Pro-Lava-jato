@@ -904,3 +904,5 @@ body.install-open { padding-bottom: 170px; }
 .pix-status { overflow-wrap: anywhere; }
 .pix-warning { color: var(--warning); font-weight: 600; }
 .btn-danger-text { color: var(--danger); border-color: var(--danger); }
+
+#limit-hint.is-full { color: var(--warning); font-weight: 700; }
