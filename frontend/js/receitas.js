@@ -5,6 +5,7 @@ import { formatCents, centsToInput } from './format.js';
 import { el, chipGroup, openModal, toast, runBusy, setFieldError } from './ui.js';
 import { getServices } from './catalog.js';
 import { commonFields, sectionLabel, diff } from './entry-form.js';
+import { customerPicker } from './cliente-escolha.js';
 
 /** Abre o formulário. Com `entry`, edita (somente ADMIN; o servidor confere). */
 export async function openRevenueForm({ entry = null, onSaved } = {}) {
@@ -36,6 +37,8 @@ export async function openRevenueForm({ entry = null, onSaved } = {}) {
     },
   });
 
+  const customer = customerPicker({ initial: entry?.customer_id ? { id: entry.customer_id, name: entry.customer_name } : null });
+
   const form = el('form', { class: 'form', novalidate: true },
     el('div', { class: 'field' },
       sectionLabel('Serviço'),
@@ -43,6 +46,7 @@ export async function openRevenueForm({ entry = null, onSaved } = {}) {
         ? service.element
         : el('p', { class: 'hint' }, 'Nenhum serviço cadastrado ainda. Descreva a receita em "Mais opções".'),
     ),
+    customer.element,
     common.amountField,
     common.paymentField,
     common.more,
@@ -61,6 +65,7 @@ export async function openRevenueForm({ entry = null, onSaved } = {}) {
           const body = common.read();
           if (!body) return;
           body.service_id = service.value ?? null;
+          body.customer_id = customer.id;
           if (body.service_id === null && !body.description) {
             common.more.open = true;
             setFieldError(common.descriptionInput, 'Escolha um serviço ou descreva a receita.');

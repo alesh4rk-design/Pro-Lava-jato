@@ -4,7 +4,7 @@
 import { session } from './app.js';
 import { api } from './api.js';
 import { config } from './config.js';
-import { formatPhone, formatDateTime } from './format.js';
+import { formatPhone, formatDateTime, formatDate, formatCents } from './format.js';
 import { el, icon, field, toast, openModal, stateView, runBusy, validateFields, setFieldError } from './ui.js';
 import { renderMessage, whatsappUrl, vehicleText, PIX_MISSING } from './whatsapp.js';
 
@@ -217,6 +217,7 @@ function customerCard(c) {
       el('span', {}, formatPhone(c.phone)),
       vehicleText(c) ? el('span', {}, vehicleText(c)) : null,
       c.notes ? el('span', { class: 'customer-notes' }, c.notes) : null,
+      c.visits ? el('span', {}, `${c.visits} ${c.visits === 1 ? 'lavagem' : 'lavagens'} · última em ${formatDate(c.last_visit)}${isAdmin ? ` · total ${formatCents(c.spent_cents)}` : ''}`) : el('span', {}, 'Nenhuma lavagem registrada'),
       el('span', {}, lastContact)),
     el('div', { class: 'tenant-actions' },
       el('button', { class: 'btn btn-success', type: 'button', onclick: () => openSend(c), disabled: !c.active }, icon('message', 'icon icon-sm'), 'WhatsApp'),

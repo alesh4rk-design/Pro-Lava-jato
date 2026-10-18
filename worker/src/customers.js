@@ -13,7 +13,23 @@ const MAX_TEMPLATES = 30;
 /* Clientes ------------------------------------------------------------------------- */
 
 const COLUMNS = 'id, name, phone, vehicle, plate, notes, active, last_contact_at, created_at';
-const toPublic = (row) => ({ ...row, active: row.active === 1 });
+// Histórico: lavagens (receitas ativas ligadas ao cliente), data da última e quanto já gastou (este só o ADMIN vê).
+const STATS = `(SELECT COUNT(*) FROM revenues r WHERE r.tenant_id = c.tenant_id AND r.customer_id = c.id AND r.status = 'ATIVO') AS visits,
+               (SELECT MAX(r.date) FROM revenues r WHERE r.tenant_id = c.tenant_id AND r.customer_id = c.id AND r.status = 'ATIVO') AS last_visit,
+               (SELECT COALESCE(SUM(r.amount_cents), 0) FROM revenues r WHERE r.tenant_id = c.tenant_id AND r.customer_id = c.id AND r.status = 'ATIVO') AS spent_cents`;
+const LIST_COLUMNS = COLUMNS.split(', ').map((col) => `c.${col}`).join(', ');
+const toPublic = (row, auth) => {
+  const out = { visits: 0, last_visit: null, spent_cents: 0, ...row, active: row.active === 1 };
+  if (auth?.role !== 'ADMIN') delete out.spent_cents;
+  return out;
+};
+
+/** Cliente ativo do próprio lava-jato (usado ao ligar uma receita a um cliente). */
+export async function requireActiveCustomer(env, tenantId, customerId) {
+  const row = await env.DB.prepare('SELECT id, name FROM customers WHERE id = ? AND tenant_id = ? AND active = 1').bind(customerId, tenantId).first();
+  if (!row) throw errors.validation('Cliente inválido.');
+  return row;
+}
 
 function parsePlate(value) {
   if (value === undefined || value === null || value === '') return '';
@@ -46,26 +62,26 @@ function parseCustomer(body, { partial = false } = {}) {
 }
 
 async function findCustomer(env, auth, idParam) {
-  const row = await env.DB.prepare(`SELECT ${COLUMNS} FROM customers WHERE tenant_id = ? AND id = ?`).bind(auth.tenantId, v.id(idParam)).first();
+  const row = await env.DB.prepare(`SELECT ${LIST_COLUMNS}, ${STATS} FROM customers c WHERE c.tenant_id = ? AND c.id = ?`).bind(auth.tenantId, v.id(idParam)).first();
   if (!row) throw errors.notFound('Cliente não encontrado.');
   return row;
 }
 
 export async function listCustomers({ env, auth, url }) {
   const params = url.searchParams;
-  const where = ['tenant_id = ?'];
+  const where = ['c.tenant_id = ?'];
   const binds = [auth.tenantId];
-  if (params.get('include_inactive') !== '1') where.push('active = 1');
+  if (params.get('include_inactive') !== '1') where.push('c.active = 1');
   const pattern = v.likePattern(params.get('q'));
   if (pattern) {
-    where.push(`(name LIKE ? ESCAPE '\\' OR phone LIKE ? ESCAPE '\\' OR plate LIKE ? ESCAPE '\\' OR vehicle LIKE ? ESCAPE '\\')`);
+    where.push(`(c.name LIKE ? ESCAPE '\\' OR c.phone LIKE ? ESCAPE '\\' OR c.plate LIKE ? ESCAPE '\\' OR c.vehicle LIKE ? ESCAPE '\\')`);
     binds.push(pattern, pattern, pattern, pattern);
   }
   const page = v.page(params);
   const { results } = await env.DB.prepare(
-    `SELECT ${COLUMNS} FROM customers WHERE ${where.join(' AND ')} ORDER BY name COLLATE NOCASE, id LIMIT ? OFFSET ?`,
+    `SELECT ${LIST_COLUMNS}, ${STATS} FROM customers c WHERE ${where.join(' AND ')} ORDER BY c.name COLLATE NOCASE, c.id LIMIT ? OFFSET ?`,
   ).bind(...binds, PAGE_SIZE + 1, (page - 1) * PAGE_SIZE).all();
-  return ok({ items: results.slice(0, PAGE_SIZE).map(toPublic), page, has_more: results.length > PAGE_SIZE });
+  return ok({ items: results.slice(0, PAGE_SIZE).map((row) => toPublic(row, auth)), page, has_more: results.length > PAGE_SIZE });
 }
 
 export async function createCustomer({ request, env, auth, ip }) {
@@ -79,7 +95,7 @@ export async function createCustomer({ request, env, auth, ip }) {
     // Telefone é dado pessoal: a auditoria guarda só o nome.
     await auditStatement(env, { tenantId: auth.tenantId, actor: actorOf(auth), action: 'CUSTOMER_CREATED', entity: 'customer', details: { name: data.name }, ip }),
   ]);
-  return ok(toPublic(inserted.results[0]), 201);
+  return ok(toPublic(inserted.results[0], auth), 201);
 }
 
 export async function updateCustomer({ request, env, auth, params, ip }) {
@@ -99,7 +115,7 @@ export async function updateCustomer({ request, env, auth, params, ip }) {
       }),
     ]);
   }
-  return ok(toPublic(await findCustomer(env, auth, String(current.id))));
+  return ok(toPublic(await findCustomer(env, auth, String(current.id)), auth));
 }
 
 /** Registra que a equipe abriu o WhatsApp para este cliente (data do último contato e auditoria). */

@@ -544,6 +544,63 @@ test('usuários: só operadores e no máximo 2 por lava-jato', async () => {
   expect(result.body.error.message).toBe('Só é possível cadastrar operadores.');
 });
 
+test('receita com o cliente que fez a limpeza: cadastro na hora, busca e histórico', async () => {
+  // Cliente novo, cadastrado na hora do lançamento
+  await owner.goto('lancamento.html?tipo=receita');
+  await owner.click('dialog .chip:has-text("Lavagem completa")');
+  await owner.fill('#customer-pick', 'Maria');
+  await owner.click('dialog .chip-new');
+  await expect(owner.locator('#qc-name')).toHaveValue('Maria');
+  await owner.fill('#qc-name', 'Maria Teste');
+  await owner.fill('#qc-phone', '31 98888-1212');
+  await owner.fill('#qc-plate', 'xyz-9k88');
+  await owner.click('dialog:has-text("Novo cliente") .btn-primary');
+  await expect(owner.locator('.customer-name')).toHaveText('Maria Teste');
+  await expect(owner.locator('#revenue-amount')).toHaveValue('70,00');
+  await owner.click('dialog .btn-success');
+  await expect(lastToast(owner)).toContainText('Receita de R$ 70,00 registrada');
+
+  // O nome aparece no caixa e no detalhe
+  await owner.goto('caixa.html');
+  const row = owner.locator('.entry-row.is-in', { hasText: 'Maria Teste' });
+  await expect(row).toBeVisible();
+  await row.click();
+  await expect(owner.locator('dialog[open]')).toContainText('Cliente');
+  await expect(owner.locator('dialog[open]')).toContainText('Maria Teste');
+  await owner.click('dialog[open] button[aria-label="Fechar"]');
+  await owner.fill('#cash-search', 'maria teste');
+  await expect(owner.locator('.entry-row')).toHaveCount(1);
+
+  // Operador escolhe um cliente que já existe e vê o nome no "Meu dia"
+  await operator.goto('lancamento.html?tipo=receita');
+  await operator.click('dialog .chip:has-text("Lavagem completa")');
+  await operator.fill('#customer-pick', 'abc1d');
+  await operator.click('dialog .customer-results .chip:has-text("João da Silva")');
+  await operator.click('dialog .btn-success');
+  await expect(lastToast(operator)).toContainText('registrada');
+  await operator.goto('dashboard.html');
+  await expect(operator.locator('#dash-content .entry-row', { hasText: 'João da Silva' })).toBeVisible();
+
+  // Histórico no cadastro: o administrador vê o total; o operador, não
+  await owner.goto('clientes.html');
+  const maria = owner.locator('.customer-card', { hasText: 'Maria Teste' });
+  await expect(maria).toContainText('1 lavagem · última em');
+  await expect(maria).toContainText('total R$ 70,00');
+  await operator.goto('clientes.html');
+  await expect(operator.locator('.customer-card', { hasText: 'Maria Teste' })).toContainText('1 lavagem');
+  await expect(operator.locator('.customer-card', { hasText: 'Maria Teste' })).not.toContainText('total');
+
+  // Trocar e remover o cliente de uma receita (administrador)
+  await owner.goto('caixa.html');
+  await owner.locator('.entry-row.is-in', { hasText: 'Maria Teste' }).click();
+  await owner.click('dialog[open] button:has-text("Editar")');
+  await expect(owner.locator('.customer-name')).toHaveText('Maria Teste');
+  await owner.click('dialog[open] button:has-text("Remover")');
+  await owner.click('dialog[open] .btn-success');
+  await expect(lastToast(owner)).toContainText('atualizada');
+  await expect(owner.locator('.entry-row.is-in', { hasText: 'Maria Teste' })).toHaveCount(0);
+});
+
 test('telas novas não rolam para o lado em 360px', async () => {
   for (const name of ['clientes', 'recorrentes']) {
     await owner.goto(`${name}.html`);
@@ -554,4 +611,13 @@ test('telas novas não rolam para o lado em 360px', async () => {
   await owner.locator('.customer-card').first().locator('button:has-text("WhatsApp")').click();
   await expect(owner.locator('dialog[open]')).toBeVisible();
   expect(await noHorizontalScroll(owner), 'envio de mensagem').toBe(true);
+
+  // Formulário de receita com a lista de clientes aberta: nada pode passar da largura da tela
+  const dialogFits = () => owner.evaluate(() => { const d = document.querySelector('dialog[open]'); return d.scrollWidth <= d.clientWidth; });
+  await owner.goto('lancamento.html?tipo=receita');
+  await expect(owner.locator('dialog[open]')).toBeVisible();
+  await owner.fill('#customer-pick', 'a');
+  await expect(owner.locator('.customer-results .chip').first()).toBeVisible();
+  expect(await noHorizontalScroll(owner), 'receita com clientes').toBe(true);
+  expect(await dialogFits(), 'janela da receita com clientes').toBe(true);
 });
