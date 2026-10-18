@@ -288,3 +288,58 @@ test('navegação: voltar, editar o próprio nome e selos de edição', async ({
   await expect(owner.locator('.audit-row', { hasText: 'Alterou o próprio nome' })).toBeVisible();
   await expect(owner.locator('#audit-list')).not.toContainText('Editou os dados');
 });
+
+test('despesas recorrentes: cadastrar, lançar na hora, alerta de vencimento e pausar', async () => {
+  await owner.goto('mais.html');
+  await owner.click('a.menu-link:has-text("Despesas recorrentes")');
+  await owner.waitForURL(/recorrentes\.html/);
+  await expect(owner.locator('.state')).toContainText('Nenhuma despesa recorrente');
+
+  // Diária começando hoje: o primeiro lançamento acontece na hora.
+  await owner.click('#new-recurring');
+  await owner.fill('#r-amount', '30,00');
+  await owner.fill('#r-description', 'Lanche da equipe');
+  await owner.click('dialog .chip:has-text("Aluguel")');
+  await owner.click('dialog .chip:has-text("Diária")');
+  await owner.click('dialog .modal-actions .btn-primary');
+  await expect(lastToast(owner)).toContainText('Despesa recorrente criada');
+  const card = owner.locator('.recurring-card', { hasText: 'Lanche da equipe' });
+  await expect(card).toContainText('Todo dia');
+  await expect(card).toContainText('Próximo lançamento');
+
+  // Semanal no dia de amanhã: aparece como "amanhã" no aviso do Início.
+  const tomorrow = await owner.evaluate(() => (new Date().getDay() + 1) % 7);
+  await owner.click('#new-recurring');
+  await owner.fill('#r-amount', '150,00');
+  await owner.fill('#r-description', 'Diarista');
+  await owner.click('dialog .chip:has-text("Aluguel")');
+  await owner.click('dialog .chip:has-text("Semanal")');
+  await owner.locator('dialog [aria-label="Dia da semana"] .chip').nth(tomorrow).click();
+  await owner.click('dialog .modal-actions .btn-primary');
+  await expect(owner.locator('.recurring-card', { hasText: 'Diarista' })).toContainText('Toda ');
+
+  await owner.goto('dashboard.html');
+  await expect(owner.locator('#due-alert')).toBeVisible();
+  await expect(owner.locator('#due-alert')).toContainText('Vencimentos para hoje ou amanhã');
+  await expect(owner.locator('#due-alert')).toContainText('Diarista');
+  await expect(owner.locator('#due-alert')).toContainText('amanhã');
+
+  // O lançamento automático está no Caixa e informa a origem.
+  await owner.goto('caixa.html');
+  await owner.locator('.entry-row.is-out', { hasText: 'Lanche da equipe' }).click();
+  await expect(owner.locator('dialog[open]')).toContainText('Despesa recorrente (lançamento automático)');
+  await owner.click('dialog[open] button[aria-label="Fechar"]');
+
+  // Pausar tira do aviso; o operador não vê nada disso.
+  await owner.goto('recorrentes.html');
+  await owner.locator('.recurring-card', { hasText: 'Diarista' }).locator('button:has-text("Pausar")').click();
+  await expect(owner.locator('.recurring-card', { hasText: 'Diarista' })).toContainText('Pausada');
+  await owner.goto('dashboard.html');
+  await expect(owner.locator('#due-alert')).not.toContainText('Diarista');
+
+  await operator.goto('dashboard.html');
+  await expect(operator.locator('#due-alert')).toBeHidden();
+  await operator.goto('recorrentes.html');
+  await operator.waitForURL(/dashboard\.html/);
+  expect(await noHorizontalScroll(owner), 'recorrentes').toBe(true);
+});
