@@ -1,0 +1,55 @@
+name: Publicar API (Cloudflare Workers)
+
+# A cada envio para a main que mude a API: roda os testes, aplica novas migrações no banco D1 e publica o Worker.
+# Precisa de dois segredos do repositório (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   token da Cloudflare com permissão de editar Workers e D1 (veja docs/PUBLICACAO.md)
+#   CLOUDFLARE_ACCOUNT_ID  ID da conta Cloudflare (não é segredo, mas fica junto)
+# Sem eles, o fluxo só avisa e não publica nada.
+
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**', '.github/workflows/api.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - id: secrets
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Segredos da Cloudflare não configurados: a API não foi publicada. Veja docs/PUBLICACAO.md (Publicação automática)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.secrets.outputs.ready == 'true'
+        run: npm ci
+      - if: steps.secrets.outputs.ready == 'true'
+        run: npm test
+      - name: Aplicar migrações do banco
+        if: steps.secrets.outputs.ready == 'true'
+        run: npx wrangler d1 migrations apply lava-jato-db --remote
+      - name: Publicar o Worker
+        if: steps.secrets.outputs.ready == 'true'
+        run: npx wrangler deploy

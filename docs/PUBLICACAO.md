@@ -125,6 +125,24 @@ O primeiro comando pergunta nome, e-mail e senha (a senha **não aparece** na te
 
 ---
 
+## Publicação automática (depois da primeira vez)
+
+Depois que tudo estiver no ar, cada merge na branch `main` publica sozinho:
+- **o site**, pelo fluxo "Publicar frontend (GitHub Pages)";
+- **a API**, pelo fluxo "Publicar API (Cloudflare Workers)": roda os testes, aplica migrações novas no banco e publica o Worker.
+
+Para a API, configure uma única vez dois segredos no GitHub:
+
+1. **Criar o token na Cloudflare:** dash.cloudflare.com → ícone da conta (canto superior direito) → **Profile → API Tokens → Create Token** → modelo **Edit Cloudflare Workers** → **Use template**. Em **Permissions**, clique em **+ Add more** e adicione **Account → D1 → Edit**. Em **Account Resources**, escolha a sua conta. **Continue to summary → Create Token** e copie o token (ele só aparece uma vez).
+2. **Pegar o Account ID:** no painel da Cloudflare, abra **Workers & Pages**; o **Account ID** aparece na coluna da direita (ou no endereço do navegador, logo depois de `dash.cloudflare.com/`).
+3. **Salvar no GitHub:** no repositório, **Settings → Secrets and variables → Actions → New repository secret**:
+   - Nome `CLOUDFLARE_API_TOKEN`, valor: o token do passo 1.
+   - Nome `CLOUDFLARE_ACCOUNT_ID`, valor: o ID do passo 2.
+
+O token é um segredo: cole apenas no GitHub, nunca em conversas, e-mails ou no código. Se ele vazar, apague-o na Cloudflare (API Tokens → Roll/Delete) e crie outro.
+
+---
+
 ## Checklist de teste no celular
 
 Faça com o celular de verdade, de preferência com internet móvel:
