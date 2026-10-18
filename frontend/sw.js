@@ -1,7 +1,7 @@
 // Service worker: guarda só os arquivos do app. Respostas da API NUNCA são armazenadas.
 // Ao publicar uma nova versão, incremente VERSION.
 
-const VERSION = 'v11';
+const VERSION = 'v12';
 const CACHE = `lj-shell-${VERSION}`;
 
 const SHELL = [
@@ -60,6 +60,8 @@ const SHELL = [
   'assets/icons.svg',
   'assets/icons/icon-192.png',
   'assets/icons/apple-touch-icon.png',
+  'assets/icons/icon-512.png',
+  'assets/icons/icon-maskable-512.png',
 ];
 
 self.addEventListener('install', (event) => {
