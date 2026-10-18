@@ -126,12 +126,12 @@ describe('mensagens prontas', () => {
   it('cada lava-jato recebe as mensagens padrão uma única vez', async () => {
     const f = await financeFixture();
     const first = (await call('GET', '/api/message-templates', { token: f.opToken })).json.data;
-    expect(first.items.length).toBe(5);
+    expect(first.items.length).toBe(6);
     expect(first.items.map((t) => t.title)).toContain('Veículo pronto');
     expect(first.items.every((t) => t.active)).toBe(true);
-    expect(first.placeholders).toEqual(['nome', 'veiculo', 'placa', 'lavajato']);
+    expect(first.placeholders).toEqual(['nome', 'veiculo', 'placa', 'lavajato', 'pix']);
     await Promise.all([1, 2, 3].map(() => call('GET', '/api/message-templates', { token: f.adminToken })));
-    expect((await call('GET', '/api/message-templates', { token: f.adminToken })).json.data.items).toHaveLength(5);
+    expect((await call('GET', '/api/message-templates', { token: f.adminToken })).json.data.items).toHaveLength(6);
   });
 
   it('apagar todas não recria as padrão; só administrador edita', async () => {
@@ -141,7 +141,7 @@ describe('mensagens prontas', () => {
     expect((await call('POST', '/api/message-templates', { token: f.opToken, body: { title: 'Novo', body: 'Olá {nome}' } })).status).toBe(403);
     for (const t of items) expect((await call('PUT', `/api/message-templates/${t.id}`, { token: f.adminToken, body: { active: false } })).status).toBe(200);
     expect((await call('GET', '/api/message-templates', { token: f.adminToken })).json.data.items).toEqual([]);
-    expect((await call('GET', '/api/message-templates?include_inactive=1', { token: f.adminToken })).json.data.items).toHaveLength(5);
+    expect((await call('GET', '/api/message-templates?include_inactive=1', { token: f.adminToken })).json.data.items).toHaveLength(6);
     expect((await call('GET', '/api/message-templates?include_inactive=1', { token: f.opToken })).json.data.items).toEqual([]); // operador nunca vê as inativas
   });
 
@@ -154,7 +154,7 @@ describe('mensagens prontas', () => {
 
     const post = (body) => call('POST', '/api/message-templates', { token: f.adminToken, body });
     const bad = [
-      { title: 'A', body: 'Olá {nome}' }, { title: 'Ok', body: 'x' }, { title: 'Ok', body: 'Olá {cpf}' }, { title: 'Ok', body: 'Olá {}' },
+      { title: 'A', body: 'Olá {nome}' }, { title: 'Ok', body: 'x' }, { title: 'Ok', body: 'Olá {cpf}' }, { title: 'Ok', body: 'Olá {}' }, { title: 'Ok', body: 'Chave {pix_key}' },
       { title: 'x'.repeat(61), body: 'Olá {nome}' }, { title: 'Ok', body: 'x'.repeat(501) }, { title: 'Ok', body: 'Olá {nome}', active: false }, { title: 'Ok' }, { body: 'Olá' },
     ];
     for (const body of bad) expect((await post(body)).status, JSON.stringify(body)).toBe(400);

@@ -124,14 +124,15 @@ export async function registerContact({ request, env, auth, params, ip }) {
 
 /* Mensagens prontas ----------------------------------------------------------------- */
 
-// {nome}, {veiculo} (modelo e placa), {placa} e {lavajato}; o app troca pelos dados do cliente na hora de enviar.
-export const PLACEHOLDERS = ['nome', 'veiculo', 'placa', 'lavajato'];
+// {nome}, {veiculo} (modelo e placa), {placa}, {lavajato} e {pix} (chave cadastrada em Configurações); o app troca pelos dados do cliente na hora de enviar.
+export const PLACEHOLDERS = ['nome', 'veiculo', 'placa', 'lavajato', 'pix'];
 
 const DEFAULT_TEMPLATES = [
   ['Veículo pronto', 'Olá, {nome}! A limpeza do seu veículo {veiculo} já foi concluída. Pode vir retirar quando quiser. — {lavajato}'],
   ['Serviço iniciado', 'Olá, {nome}! Recebemos o seu veículo {veiculo} e já começamos o serviço. Avisaremos assim que estiver pronto. — {lavajato}'],
   ['Agradecimento', 'Olá, {nome}! Obrigado por escolher o {lavajato}. Foi um prazer cuidar do seu veículo. Volte sempre!'],
   ['Lembrete de retorno', 'Olá, {nome}! Já faz um tempinho desde a última lavagem do seu veículo {veiculo}. Que tal agendar uma nova? — {lavajato}'],
+  ['Chave PIX', 'Olá, {nome}! Segue a chave PIX do {lavajato} para pagamento:\n\n{pix}\n\nDepois de pagar, é só enviar o comprovante por aqui. Obrigado!'],
   ['Promoção da semana', 'Olá, {nome}! Temos uma condição especial esta semana no {lavajato}. Fale com a gente para saber mais.'],
 ];
 
@@ -160,7 +161,9 @@ export async function listTemplates({ env, auth, url }) {
   const { results } = await env.DB.prepare(
     `SELECT ${TEMPLATE_COLUMNS} FROM message_templates WHERE tenant_id = ? ${all ? '' : 'AND active = 1'} ORDER BY active DESC, id LIMIT 100`,
   ).bind(auth.tenantId).all();
-  return ok({ items: results.map(templatePublic), placeholders: PLACEHOLDERS });
+  // A chave PIX vai junto: quem envia a mensagem (inclusive o operador) precisa dela para preencher {pix}.
+  const pix = await env.DB.prepare('SELECT pix_key AS key, pix_key_type AS type, pix_holder AS holder FROM tenants WHERE id = ?').bind(auth.tenantId).first();
+  return ok({ items: results.map(templatePublic), placeholders: PLACEHOLDERS, pix });
 }
 
 export async function createTemplate({ request, env, auth, ip }) {

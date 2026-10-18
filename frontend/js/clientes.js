@@ -6,7 +6,7 @@ import { api } from './api.js';
 import { config } from './config.js';
 import { formatPhone, formatDateTime } from './format.js';
 import { el, icon, field, toast, openModal, stateView, runBusy, validateFields, setFieldError } from './ui.js';
-import { renderMessage, whatsappUrl, vehicleText } from './whatsapp.js';
+import { renderMessage, whatsappUrl, vehicleText, PIX_MISSING } from './whatsapp.js';
 
 const isAdmin = session?.user.role === 'ADMIN';
 const $ = (id) => document.getElementById(id);
@@ -17,14 +17,19 @@ let tab = 'clientes';
 let query = '';
 let page = 1;
 let templatesCache = null;
+let pixCache = { key: '', type: '', holder: '' };
 
-const PLACEHOLDER_HELP = [['{nome}', 'Nome do cliente'], ['{veiculo}', 'Modelo e placa'], ['{placa}', 'Placa'], ['{lavajato}', 'Nome do lava-jato']];
+const PLACEHOLDER_HELP = [['{nome}', 'Nome do cliente'], ['{veiculo}', 'Modelo e placa'], ['{placa}', 'Placa'], ['{lavajato}', 'Nome do lava-jato'], ['{pix}', 'Chave PIX']];
 const SAMPLE = { name: 'Carlos Silva', vehicle: 'Gol branco', plate: 'ABC1D23' };
 
 /* Mensagens prontas -------------------------------------------------------------------- */
 
 async function loadTemplates(force = false) {
-  if (!templatesCache || force) templatesCache = (await api.get(`/message-templates${isAdmin ? '?include_inactive=1' : ''}`)).items;
+  if (!templatesCache || force) {
+    const data = await api.get(`/message-templates${isAdmin ? '?include_inactive=1' : ''}`);
+    templatesCache = data.items;
+    pixCache = data.pix;
+  }
   return templatesCache;
 }
 
@@ -33,7 +38,7 @@ function openTemplateForm(template = null) {
   const body = el('textarea', { class: 'input', id: 't-body', maxlength: 500, rows: 5, placeholder: 'Olá, {nome}! A limpeza do seu veículo já foi concluída.' }, template?.body ?? '');
   const preview = el('p', { class: 'message-preview', 'aria-live': 'polite' });
   const active = el('input', { type: 'checkbox', id: 't-active', checked: template ? template.active : true });
-  const refresh = () => { preview.textContent = renderMessage(body.value, SAMPLE, session.tenant?.name ?? config.APP_NAME) || 'A prévia aparece aqui.'; };
+  const refresh = () => { preview.textContent = renderMessage(body.value, SAMPLE, session.tenant?.name ?? config.APP_NAME, pixCache.key ? pixCache : { key: '52998224725', holder: 'Seu lava-jato' }) || 'A prévia aparece aqui.'; };
   body.addEventListener('input', refresh);
   const insert = (text) => {
     const { selectionStart: start, selectionEnd: end } = body;
@@ -114,12 +119,15 @@ async function openSend(customer) {
   let chosen = null;
   const text = el('textarea', { class: 'input', id: 'send-text', maxlength: 1000, rows: 6, 'aria-label': 'Mensagem' });
   const hint = el('p', { class: 'hint' }, 'Você pode ajustar o texto antes de abrir o WhatsApp.');
+  const pixWarning = el('p', { class: 'hint pix-warning', hidden: true }, `Você ainda não cadastrou a chave PIX. ${isAdmin ? 'Cadastre em Mais → Configurações.' : 'Peça ao administrador para cadastrar.'} Enquanto isso, escreva a chave no texto.`);
+  const syncPixWarning = () => { pixWarning.hidden = !(chosen?.body.includes('{pix}') && !pixCache.key); };
   const buttons = templates.map((t) => el('button', {
     class: 'chip', type: 'button', 'aria-pressed': 'false',
     onclick: () => {
       chosen = t;
       buttons.forEach((b) => b.setAttribute('aria-pressed', String(b === buttons[templates.indexOf(t)])));
-      text.value = renderMessage(t.body, customer, business);
+      text.value = renderMessage(t.body, customer, business, pixCache);
+      syncPixWarning();
     },
   }, t.title));
   if (templates[0]) buttons[0].click();
@@ -130,7 +138,7 @@ async function openSend(customer) {
       el('p', { class: 'muted' }, [formatPhone(customer.phone), vehicleText(customer)].filter(Boolean).join(' · ')),
       templates.length ? el('div', { class: 'field' }, el('span', { class: 'stat-label' }, 'Mensagem pronta'), el('div', { class: 'chips chips-wrap', role: 'group', 'aria-label': 'Mensagens prontas' }, buttons))
         : el('p', { class: 'hint' }, isAdmin ? 'Nenhuma mensagem pronta ativa. Crie na aba "Mensagens prontas" ou escreva abaixo.' : 'Nenhuma mensagem pronta ativa. Escreva abaixo.'),
-      el('div', { class: 'field' }, el('label', { for: 'send-text' }, 'Texto'), text, hint)),
+      el('div', { class: 'field' }, el('label', { for: 'send-text' }, 'Texto'), text, pixWarning, hint)),
     actions: [
       { label: 'Cancelar', variant: 'btn-outline' },
       {
@@ -140,6 +148,7 @@ async function openSend(customer) {
           const message = text.value.trim();
           const url = whatsappUrl(customer.phone, message);
           if (!message) { toast('Escreva ou escolha uma mensagem.', { type: 'error' }); return; }
+          if (message.includes(PIX_MISSING)) { toast('A chave PIX ainda não foi cadastrada. Escreva a chave no texto antes de enviar.', { type: 'error' }); return; }
           if (!url) { toast('Telefone inválido. Edite o cadastro do cliente.', { type: 'error' }); return; }
           window.open(url, '_blank', 'noopener,noreferrer');
           // Registra o contato (data e auditoria) sem travar a abertura do WhatsApp.
