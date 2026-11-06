@@ -191,7 +191,7 @@ test('operador: lança, mas não vê custos nem áreas do administrador', async 
   await expect(lastToast(operator)).toContainText('registrada');
 
   await operator.goto('mais.html');
-  await expect(operator.locator('.menu-link:visible')).toHaveText(['Clientes e mensagens', 'Produtos e estoque', 'Serviços']);
+  await expect(operator.locator('.menu-link:visible')).toHaveText(['Agenda', 'Clientes e mensagens', 'Produtos e estoque', 'Serviços']);
   for (const page of ['usuarios.html', 'categorias.html', 'auditoria.html', 'configuracoes.html', 'caixa.html', 'analise.html', 'recorrentes.html']) {
     await operator.goto(page);
     await operator.waitForURL(/dashboard\.html/);
@@ -766,6 +766,47 @@ test('placa no lançamento de receita: digitada, vinda do cliente, no caixa e na
   await owner.goto('lancamento.html?tipo=receita');
   await expect(owner.locator('dialog[open]')).toBeVisible();
   expect(await noHorizontalScroll(owner), 'receita com placa').toBe(true);
+});
+
+test('agendamento online: dono liga o link, cliente agenda sem login, dono confirma', async ({ browser, playwright }) => {
+  // O dono liga o link e copia o endereço
+  await owner.goto('agenda-config.html');
+  await expect(owner.locator('#booking-link')).toContainText('agendar.html?c=');
+  const link = (await owner.locator('#booking-link').textContent()).trim();
+  expect(await noHorizontalScroll(owner), 'configuração do agendamento').toBe(true);
+  await owner.check('#c-enabled');
+  await owner.click('button:has-text("Salvar")');
+  await expect(lastToast(owner)).toContainText('Salvo');
+
+  // O cliente abre o link sem entrar no sistema
+  const guest = await openPage(browser, playwright);
+  await guest.goto(link);
+  await expect(guest.locator('h1')).toContainText('Brilho Central Lava-Jato');
+  await guest.click('[aria-label="Serviço"] .chip >> nth=0');
+  await guest.click('[aria-label="Dia"] .chip >> nth=1');
+  await guest.locator('[aria-label="Horário"] .chip').first().waitFor();
+  await guest.locator('[aria-label="Horário"] .chip').first().click();
+  await guest.fill('#b-name', 'Carla Mendes');
+  await guest.fill('#b-phone', '11 95555-4444');
+  await guest.fill('#b-plate', 'kjh-9a87');
+  expect(await noHorizontalScroll(guest), 'página pública').toBe(true);
+  await guest.click('button:has-text("Pedir horário")');
+  await expect(guest.locator('h2')).toContainText('Pedido enviado');
+  await guest.close();
+
+  // O dono vê o pedido, confirma e a agenda mostra o status
+  await owner.goto('mais.html');
+  await expect(owner.locator('#agenda-badge')).toContainText('1 novo');
+  await owner.goto('agenda.html');
+  await owner.locator('#day-next').click();
+  const days = owner.locator('#agenda-list');
+  // o pedido pode estar em qualquer dia: procura nos próximos 14
+  for (let i = 0; i < 14 && !(await days.locator('.appt-card').count()); i += 1) await owner.locator('#day-next').click();
+  const appt = days.locator('.appt-card', { hasText: 'Carla Mendes' });
+  await expect(appt).toContainText('KJH9A87');
+  expect(await noHorizontalScroll(owner), 'agenda').toBe(true);
+  await appt.locator('button:has-text("Confirmar")').click();
+  await expect(days.locator('.appt-card', { hasText: 'Carla Mendes' })).toContainText('Confirmado');
 });
 
 test('telas novas não rolam para o lado em 360px', async () => {

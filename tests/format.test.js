@@ -285,3 +285,16 @@ test('placa: normaliza, valida e entende o que foi digitado na busca', () => {
   assert.equal(searchTerm('  Maria Souza '), 'Maria Souza');
   assert.equal(searchTerm('lavagem 1234'), 'lavagem 1234');
 });
+
+import { bookingLink, dayLabel, addDaysISO, confirmationMessage } from '../frontend/js/agenda-text.js';
+
+test('agenda: link público fica na mesma pasta do app', () => {
+  assert.equal(bookingLink('abc234abc234', 'https://x.github.io/Pro-Lava-jato/agenda-config.html?a=1#b'), 'https://x.github.io/Pro-Lava-jato/agendar.html?c=abc234abc234');
+  assert.equal(bookingLink('abc234abc234', 'http://127.0.0.1:8080/'), 'http://127.0.0.1:8080/agendar.html?c=abc234abc234');
+});
+
+test('agenda: rótulos de dia, soma de dias e mensagem de confirmação', () => {
+  assert.equal(dayLabel('2026-11-06'), 'Sexta, 06/11');
+  assert.equal(addDaysISO('2026-12-31', 1), '2027-01-01');
+  assert.match(confirmationMessage({ name: 'Maria', service: 'Lavagem', date: '2026-11-07', time: '10:00', businessName: 'Brilho' }), /Maria.*Brilho.*Lavagem.*Sábado, 07\/11 às 10:00/);
+});

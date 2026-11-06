@@ -16,4 +16,18 @@ async function loadDueBadge() {
   }
 }
 
+async function loadAgendaBadge() {
+  if (!session) return;
+  try {
+    const { pending } = await api.get('/appointments/summary');
+    if (!pending) return;
+    const badge = document.getElementById('agenda-badge');
+    badge.textContent = pending === 1 ? '1 novo' : `${pending} novos`;
+    badge.hidden = false;
+  } catch {
+    // indicação complementar
+  }
+}
+
 loadDueBadge();
+loadAgendaBadge();
