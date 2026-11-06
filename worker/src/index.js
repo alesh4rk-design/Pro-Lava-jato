@@ -20,6 +20,7 @@ import * as recurring from './recurring.js';
 import * as customers from './customers.js';
 import * as myDay from './my-day.js';
 import * as billing from './billing.js';
+import * as booking from './booking.js';
 
 const { ADMIN, OPERADOR } = ROLES;
 const PUBLIC = null;
@@ -47,6 +48,7 @@ const ROUTES = [
 
   ['GET', '/api/customers', TENANT, [], customers.listCustomers],
   ['POST', '/api/customers', TENANT, [], customers.createCustomer],
+  ['POST', '/api/customers/import', TENANT, [], customers.importCustomers],
   ['PUT', '/api/customers/:id', TENANT, [], customers.updateCustomer],
   ['POST', '/api/customers/:id/contact', TENANT, [], customers.registerContact],
   ['GET', '/api/message-templates', TENANT, [], customers.listTemplates],
@@ -57,6 +59,18 @@ const ROUTES = [
   ['GET', '/api/recurring-expenses/upcoming', TENANT, [ADMIN], recurring.upcomingRecurring],
   ['POST', '/api/recurring-expenses', TENANT, [ADMIN], recurring.createRecurring],
   ['PUT', '/api/recurring-expenses/:id', TENANT, [ADMIN], recurring.updateRecurring],
+
+  ['GET', '/api/booking/settings', TENANT, [ADMIN], booking.getBookingSettings],
+  ['PUT', '/api/booking/settings', TENANT, [ADMIN], booking.updateBookingSettings],
+  ['GET', '/api/appointments', TENANT, [], booking.listAppointments],
+  ['GET', '/api/appointments/summary', TENANT, [], booking.appointmentsSummary],
+  ['POST', '/api/appointments', TENANT, [], booking.createAppointment],
+  ['PUT', '/api/appointments/:id', TENANT, [], booking.updateAppointment],
+  ['GET', '/api/public/booking/:code', PUBLIC, [], booking.publicInfo],
+  ['GET', '/api/public/booking/:code/slots', PUBLIC, [], booking.publicSlots],
+  ['POST', '/api/public/booking/:code/appointments', PUBLIC, [], booking.publicCreate],
+  ['GET', '/api/public/appointments/:token', PUBLIC, [], booking.publicView_],
+  ['POST', '/api/public/appointments/:token/cancel', PUBLIC, [], booking.publicCancel],
 
   ['GET', '/api/dashboard', TENANT, [ADMIN], dashboard.getDashboard],
   ['GET', '/api/audit', TENANT, [ADMIN], listTenantAudit],

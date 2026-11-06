@@ -6,6 +6,7 @@ import { api } from './api.js';
 import { config } from './config.js';
 import { formatPhone, formatDateTime, formatDate, formatCents } from './format.js';
 import { el, icon, field, toast, openModal, stateView, runBusy, validateFields, setFieldError } from './ui.js';
+import { parseContacts, uniqueByPhone, cleanPhone } from './contatos-import.js';
 import { renderMessage, whatsappUrl, vehicleText, PIX_MISSING } from './whatsapp.js';
 
 const isAdmin = session?.user.role === 'ADMIN';
@@ -253,6 +254,73 @@ async function loadCustomers({ more = false } = {}) {
   }
 }
 
+/* Importar contatos do celular ------------------------------------------------------------------ */
+
+async function sendContacts(contacts) {
+  const total = { created: 0, duplicates: 0, invalid: 0 };
+  for (let i = 0; i < contacts.length; i += 200) {
+    const part = await api.post('/customers/import', { contacts: contacts.slice(i, i + 200) });
+    for (const k of Object.keys(total)) total[k] += part[k];
+  }
+  return total;
+}
+
+function confirmImport(contacts) {
+  const list = uniqueByPhone(contacts);
+  if (!list.length) { toast('Nenhum contato com telefone válido foi encontrado.', { type: 'error' }); return; }
+  openModal({
+    title: 'Importar contatos',
+    content: el('div', { class: 'section' },
+      el('p', {}, `Encontrei ${list.length} contato(s) com telefone. Quem já está cadastrado é ignorado, ninguém é alterado.`),
+      el('ul', { class: 'muted' }, list.slice(0, 5).map((c) => el('li', {}, `${c.name} · ${formatPhone(c.phone)}`)), list.length > 5 ? el('li', {}, `e mais ${list.length - 5}...`) : null)),
+    actions: [
+      { label: 'Voltar', variant: 'btn-outline' },
+      {
+        label: `Importar ${list.length}`, variant: 'btn-primary',
+        onClick: async (close, button) => {
+          const done = await runBusy(button, () => sendContacts(list));
+          if (!done) return;
+          close();
+          toast(`${done.created} cliente(s) novo(s). ${done.duplicates} já estavam cadastrados.`, { type: 'success', duration: 6000 });
+          loadCustomers();
+        },
+      },
+    ],
+  });
+}
+
+function openImport() {
+  const file = el('input', { type: 'file', accept: '.vcf,.csv,text/vcard,text/x-vcard,text/csv', hidden: true });
+  file.addEventListener('change', async () => {
+    const chosen = file.files[0];
+    if (!chosen) return;
+    if (chosen.size > 5 * 1024 * 1024) { toast('Arquivo muito grande (máximo 5 MB).', { type: 'error' }); return; }
+    confirmImport(parseContacts(chosen.name, await chosen.text()));
+  });
+  const pick = el('button', { class: 'btn btn-primary btn-block', type: 'button' }, 'Escolher arquivo de contatos');
+  pick.addEventListener('click', () => file.click());
+  const content = el('div', { class: 'section' },
+    el('p', {}, 'Cadastre vários clientes de uma vez a partir da agenda do celular.'),
+    el('ol', { class: 'muted' },
+      el('li', {}, 'Android: abra o app Contatos → Menu → Exportar contatos → salvar como arquivo .vcf (ou, no Google Contatos pelo computador, Exportar → vCard/CSV).'),
+      el('li', {}, 'iPhone: no iCloud.com → Contatos → selecionar todos → Exportar vCard.'),
+      el('li', {}, 'Depois toque abaixo e escolha o arquivo salvo.')),
+    pick, file);
+  if ('contacts' in navigator && 'ContactsManager' in window) {
+    const direct = el('button', { class: 'btn btn-outline btn-block', type: 'button' }, 'Escolher direto da agenda do celular');
+    direct.addEventListener('click', async () => {
+      try {
+        const picked = await navigator.contacts.select(['name', 'tel'], { multiple: true });
+        confirmImport(picked.map((c) => ({ name: (c.name?.[0] ?? '').trim() || 'Sem nome', phone: (c.tel ?? []).map(cleanPhone).find(Boolean) ?? '' })).filter((c) => c.phone));
+      } catch {
+        toast('Não foi possível abrir a agenda. Use o arquivo de contatos.', { type: 'error' });
+      }
+    });
+    content.insertBefore(direct, pick);
+  }
+  openModal({ title: 'Importar contatos', content, actions: [{ label: 'Fechar', variant: 'btn-outline' }] });
+}
+
 /* Abas e início -------------------------------------------------------------------------------- */
 
 function setTab(next) {
@@ -266,6 +334,7 @@ function setTab(next) {
 
 if (session) {
   document.querySelectorAll('#tabs .chip').forEach((chip) => chip.addEventListener('click', () => setTab(chip.dataset.tab)));
+  $('import-contacts').addEventListener('click', openImport);
   $('new-item').addEventListener('click', () => (tab === 'clientes' ? openCustomerForm() : openTemplateForm()));
   let timer;
   search.addEventListener('input', () => {

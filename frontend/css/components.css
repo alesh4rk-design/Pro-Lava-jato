@@ -946,3 +946,20 @@ body.install-open { padding-bottom: 170px; }
 .bill-summary .card:last-child { grid-column: 1 / -1; }
 .bill-summary .stat-value { font-size: var(--fs-lg); white-space: nowrap; }
 .bill-summary .card.is-attention { border-color: var(--warning); background: var(--warning-soft); }
+
+/* Agenda e agendamento online */
+.hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.booking-card { text-align: left; }
+.booking-card .brand { text-align: center; }
+.day-nav { display: flex; gap: var(--space-2); align-items: center; }
+.day-nav .input { flex: 1; min-width: 0; }
+.day-title { font-weight: 600; }
+.appt-card { display: grid; gap: var(--space-2); }
+.appt-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.appt-time { font-size: var(--fs-lg); font-weight: 700; }
+.appt-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.appt-card.is-closed { opacity: 0.65; }
+.link-box { word-break: break-all; user-select: all; }
+.hours-row { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2); align-items: center; }
+.hours-row .chip { justify-self: start; }
+.hours-row .input { min-width: 0; padding-inline: var(--space-2); }

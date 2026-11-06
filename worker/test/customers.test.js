@@ -171,3 +171,34 @@ describe('mensagens prontas', () => {
     expect(ids).not.toContain(mine.id);
   });
 });
+
+describe('clientes: importar contatos do celular', () => {
+  it('cria os válidos, ignora repetidos e inválidos, sem sobrescrever', async () => {
+    const f = await financeFixture();
+    await call('POST', '/api/customers', { token: f.opToken, body: { name: 'Já Existe', phone: '11 98888-7777' } });
+    const res = await call('POST', '/api/customers/import', {
+      token: f.opToken,
+      body: { contacts: [
+        { name: 'Ana Lima', phone: '+55 (21) 97777-1111' },
+        { name: 'Ana Repetida', phone: '21977771111' },
+        { name: 'Já Existe Outro', phone: '(11) 98888-7777' },
+        { name: 'Sem Telefone', phone: '' },
+        { name: 'X', phone: '11999990000' },
+        { name: 'Telefone Curto', phone: '123' },
+      ] },
+    });
+    expect(res.status).toBe(201);
+    expect(res.json.data).toEqual({ created: 1, duplicates: 2, invalid: 3 });
+    const list = (await call('GET', '/api/customers', { token: f.adminToken })).json.data.items;
+    expect(list.map((c) => c.name).sort()).toEqual(['Ana Lima', 'Já Existe']);
+  });
+
+  it('exige login, limita a 200 e valida o formato', async () => {
+    const f = await financeFixture();
+    expect((await call('POST', '/api/customers/import', { body: { contacts: [] } })).status).toBe(401);
+    expect((await call('POST', '/api/customers/import', { token: f.adminToken, body: { contacts: [] } })).status).toBe(400);
+    expect((await call('POST', '/api/customers/import', { token: f.adminToken, body: { contacts: 'x' } })).status).toBe(400);
+    const many = Array.from({ length: 201 }, (_, i) => ({ name: 'Fulano', phone: `119${String(10000000 + i)}` }));
+    expect((await call('POST', '/api/customers/import', { token: f.adminToken, body: { contacts: many } })).status).toBe(400);
+  });
+});
