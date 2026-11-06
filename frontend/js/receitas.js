@@ -2,10 +2,11 @@
 
 import { api } from './api.js';
 import { formatCents, centsToInput } from './format.js';
-import { el, chipGroup, openModal, toast, runBusy, setFieldError } from './ui.js';
+import { el, field, chipGroup, openModal, toast, runBusy, setFieldError } from './ui.js';
 import { getServices } from './catalog.js';
 import { commonFields, sectionLabel, diff } from './entry-form.js';
 import { customerPicker } from './cliente-escolha.js';
+import { normalizePlate, plateError } from './cliente-busca.js';
 
 /** Abre o formulário. Com `entry`, edita (somente ADMIN; o servidor confere). */
 export async function openRevenueForm({ entry = null, onSaved } = {}) {
@@ -37,7 +38,13 @@ export async function openRevenueForm({ entry = null, onSaved } = {}) {
     },
   });
 
-  const customer = customerPicker({ initial: entry?.customer_id ? { id: entry.customer_id, name: entry.customer_name } : null });
+  // Placa do veículo (opcional). Ao escolher um cliente que tem placa cadastrada, ela já vem preenchida.
+  const plate = field({ id: 'revenue-plate', label: 'Placa do veículo (opcional)', type: 'text', maxlength: 9, value: entry?.plate ?? '', placeholder: 'ABC1D23', autocapitalize: 'characters', autocomplete: 'off' });
+  const plateInput = plate.querySelector('input');
+  const customer = customerPicker({
+    initial: entry?.customer_id ? { id: entry.customer_id, name: entry.customer_name } : null,
+    onSelect: (picked) => { if (!plateInput.value.trim() && picked.plate) { plateInput.value = picked.plate; setFieldError(plateInput, null); } },
+  });
 
   const form = el('form', { class: 'form', novalidate: true },
     el('div', { class: 'field' },
@@ -47,6 +54,7 @@ export async function openRevenueForm({ entry = null, onSaved } = {}) {
         : el('p', { class: 'hint' }, 'Nenhum serviço cadastrado ainda. Descreva a receita em "Mais opções".'),
     ),
     customer.element,
+    plate,
     common.amountField,
     common.paymentField,
     common.more,
@@ -66,6 +74,10 @@ export async function openRevenueForm({ entry = null, onSaved } = {}) {
           if (!body) return;
           body.service_id = service.value ?? null;
           body.customer_id = customer.id;
+          const plateProblem = plateError(plateInput.value);
+          setFieldError(plateInput, plateProblem);
+          if (plateProblem) { plateInput.focus(); return; }
+          body.plate = normalizePlate(plateInput.value);
           if (body.service_id === null && !body.description) {
             common.more.open = true;
             setFieldError(common.descriptionInput, 'Escolha um serviço ou descreva a receita.');

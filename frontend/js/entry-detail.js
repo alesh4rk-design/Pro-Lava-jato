@@ -60,6 +60,7 @@ export async function openEntryDetail(kind, id, { isAdmin, onChanged }) {
       row('Data', formatDate(entry.date)),
       row(kind === 'IN' ? 'Serviço' : 'Categoria', entry.service_name ?? entry.category_name),
       row('Cliente', entry.customer_name),
+      row('Placa', entry.plate),
       row('Tipo', EXPENSE_TYPE_LABELS[entry.type]),
       row('Pagamento', PAYMENT_LABELS[entry.payment_method]),
       row('Descrição', entry.description),

@@ -723,6 +723,51 @@ test('financeiro: teste grátis, pagamento, atraso que corta o acesso, cobrança
   expect(system.problems).toEqual([]);
 });
 
+test('placa no lançamento de receita: digitada, vinda do cliente, no caixa e na busca', async () => {
+  // Placa digitada à mão (sem cliente), com validação
+  await owner.goto('lancamento.html?tipo=receita');
+  await owner.click('dialog .chip:has-text("Lavagem completa")');
+  await owner.fill('#revenue-plate', 'ab');
+  await owner.click('dialog .btn-success');
+  await expect(owner.locator('#revenue-plate-error')).toContainText('Placa inválida');
+  await owner.fill('#revenue-plate', 'qwe-4r56');
+  await owner.click('dialog .btn-success');
+  await expect(lastToast(owner)).toContainText('Receita de R$ 70,00 registrada');
+
+  // Cliente com placa cadastrada: a placa vem sozinha (e dá para trocar)
+  await operator.goto('lancamento.html?tipo=receita');
+  await operator.click('dialog .chip:has-text("Lavagem completa")');
+  await operator.fill('#customer-pick', 'joão');
+  await operator.click('dialog .customer-results .chip:has-text("João da Silva")');
+  await expect(operator.locator('#revenue-plate')).toHaveValue('ABC1D23');
+  await operator.click('dialog .btn-success');
+  await expect(lastToast(operator)).toContainText('registrada');
+  await operator.goto('dashboard.html');
+  await expect(operator.locator('#dash-content .entry-row', { hasText: 'ABC1D23' }).first()).toBeVisible();
+
+  // Caixa: a placa aparece na linha e no detalhe, e a busca acha mesmo com hífen
+  await owner.goto('caixa.html');
+  await expect(owner.locator('.entry-row.is-in', { hasText: 'QWE4R56' })).toBeVisible();
+  await owner.fill('#cash-search', 'qwe-4r56');
+  await expect(owner.locator('.entry-row')).toHaveCount(1);
+  await owner.locator('.entry-row').click();
+  await expect(owner.locator('dialog[open]')).toContainText('Placa');
+  await expect(owner.locator('dialog[open]')).toContainText('QWE4R56');
+
+  // O administrador corrige a placa
+  await owner.click('dialog[open] button:has-text("Editar")');
+  await expect(owner.locator('#revenue-plate')).toHaveValue('QWE4R56');
+  await owner.fill('#revenue-plate', 'rst1u23');
+  await owner.click('dialog[open] .btn-success');
+  await expect(lastToast(owner)).toContainText('atualizada');
+  await owner.fill('#cash-search', 'rst1u23');
+  await expect(owner.locator('.entry-row')).toHaveCount(1);
+  // Largura do formulário em 360px
+  await owner.goto('lancamento.html?tipo=receita');
+  await expect(owner.locator('dialog[open]')).toBeVisible();
+  expect(await noHorizontalScroll(owner), 'receita com placa').toBe(true);
+});
+
 test('telas novas não rolam para o lado em 360px', async () => {
   for (const name of ['clientes', 'recorrentes']) {
     await owner.goto(`${name}.html`);
