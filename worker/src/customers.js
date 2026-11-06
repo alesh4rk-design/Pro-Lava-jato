@@ -31,7 +31,8 @@ export async function requireActiveCustomer(env, tenantId, customerId) {
   return row;
 }
 
-function parsePlate(value) {
+/** Placa opcional: sem espaço nem hífen, maiúscula, 5 a 8 letras e números (ex.: ABC1D23). */
+export function parsePlate(value) {
   if (value === undefined || value === null || value === '') return '';
   if (typeof value !== 'string') throw errors.validation('Placa inválida.');
   const plate = value.toUpperCase().replace(/[\s-]/g, '');

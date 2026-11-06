@@ -7,6 +7,7 @@ import { el, icon, stateView } from './ui.js';
 import { periodPicker } from './periods.js';
 import { PAYMENT_LABELS } from './entry-form.js';
 import { openEntryDetail } from './entry-detail.js';
+import { searchTerm } from './cliente-busca.js';
 
 const $ = (id) => document.getElementById(id);
 const summary = $('cash-summary');
@@ -66,7 +67,7 @@ function entryRow(item) {
   const isIn = item.kind === 'IN';
   const cancelled = item.status === 'CANCELADO';
   const title = item.description || item.ref_name || (isIn ? 'Receita' : 'Despesa');
-  const subtitle = [item.customer_name, item.description ? item.ref_name : null, PAYMENT_LABELS[item.payment_method], formatDate(item.date)].filter(Boolean).join(' · ');
+  const subtitle = [item.customer_name, item.plate, item.description ? item.ref_name : null, PAYMENT_LABELS[item.payment_method], formatDate(item.date)].filter(Boolean).join(' · ');
   return el('li', {},
     el('button', {
       class: `entry-row ${isIn ? 'is-in' : 'is-out'}${cancelled ? ' is-cancelled' : ''}`,
@@ -86,7 +87,7 @@ async function loadEntries({ append = false } = {}) {
   if (state.kind) params.set('kind', state.kind);
   if (state.method) params.set('payment_method', state.method);
   if (state.cancelled) params.set('include_cancelled', '1');
-  if (search.value.trim()) params.set('q', search.value.trim());
+  if (search.value.trim()) params.set('q', searchTerm(search.value));
   params.set('page', String(state.page));
 
   if (!append) list.replaceChildren(el('li', { class: 'card' }, el('div', { class: 'skeleton sk-line' })));

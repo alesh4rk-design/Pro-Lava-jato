@@ -46,13 +46,13 @@ export async function cashEntries({ env, auth, url }) {
   const { results } = await env.DB.prepare(
     `SELECT * FROM (
        SELECT 'IN' AS kind, x.id, x.date, x.amount_cents, x.payment_method, x.status, x.description,
-              s.name AS ref_name, cust.name AS customer_name, x.created_at
+              s.name AS ref_name, cust.name AS customer_name, x.plate AS plate, x.created_at
          FROM revenues x LEFT JOIN services s ON s.tenant_id = x.tenant_id AND s.id = x.service_id
                          LEFT JOIN customers cust ON cust.tenant_id = x.tenant_id AND cust.id = x.customer_id
-        WHERE ?7 IN ('ALL', 'IN') AND ${filters} ${search('s.name', 'cust.name')}
+        WHERE ?7 IN ('ALL', 'IN') AND ${filters} ${search('s.name', 'cust.name', 'x.plate')}
        UNION ALL
        SELECT 'OUT' AS kind, x.id, x.date, x.amount_cents, x.payment_method, x.status, x.description,
-              c.name AS ref_name, NULL AS customer_name, x.created_at
+              c.name AS ref_name, NULL AS customer_name, NULL AS plate, x.created_at
          FROM expenses x JOIN categories c ON c.tenant_id = x.tenant_id AND c.id = x.category_id
         WHERE ?7 IN ('ALL', 'OUT') AND ${filters} ${search('c.name')}
      )

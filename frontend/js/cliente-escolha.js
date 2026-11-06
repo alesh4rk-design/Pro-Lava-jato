@@ -49,7 +49,7 @@ function openQuickCustomer(initialName, onCreated) {
  * Seletor de cliente. Retorna { element, get id(), get name() }.
  * `initial`: { id, name } do cliente já ligado (edição de receita).
  */
-export function customerPicker({ initial = null } = {}) {
+export function customerPicker({ initial = null, onSelect } = {}) {
   let selected = initial?.id ? { id: initial.id, name: initial.name ?? 'Cliente' } : null;
   let timer;
   let seq = 0;
@@ -73,7 +73,7 @@ export function customerPicker({ initial = null } = {}) {
         el('button', { class: 'btn btn-ghost btn-sm', type: 'button', 'aria-label': 'Tirar o cliente', onclick: () => { selected = null; paint(); } }, 'Remover'));
     }
   };
-  const pick = (customer) => { selected = { id: customer.id, name: customer.name }; input.value = ''; results.replaceChildren(); paint(); };
+  const pick = (customer) => { selected = { id: customer.id, name: customer.name }; input.value = ''; results.replaceChildren(); paint(); onSelect?.(customer); };
 
   const search = async () => {
     const mine = ++seq;

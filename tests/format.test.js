@@ -269,3 +269,19 @@ test('aviso de mensalidade para o administrador do lava-jato', () => {
   assert.match(subscriptionNotice(sub('TESTE', 2)).text, /teste termina em 2 dias/);
   assert.match(subscriptionNotice(sub('CANCELADA', 5)).text, /até 25\/10\/2026/);
 });
+
+import { normalizePlate, plateError, searchTerm } from '../frontend/js/cliente-busca.js';
+
+test('placa: normaliza, valida e entende o que foi digitado na busca', () => {
+  assert.equal(normalizePlate(' abc-1d23 '), 'ABC1D23');
+  assert.equal(normalizePlate('xyz 9k88'), 'XYZ9K88');
+  assert.equal(normalizePlate(null), '');
+  assert.equal(plateError(''), null); // opcional
+  assert.equal(plateError('ABC-1234'), null);
+  assert.equal(plateError('abc1d23'), null);
+  for (const bad of ['A', 'ABCD', 'AB@1234', 'ABCDEFGHIJ']) assert.match(plateError(bad), /Placa inválida/, bad);
+  assert.equal(searchTerm('abc-1234'), 'ABC1234');
+  assert.equal(searchTerm('ABC 1D23'), 'ABC1D23');
+  assert.equal(searchTerm('  Maria Souza '), 'Maria Souza');
+  assert.equal(searchTerm('lavagem 1234'), 'lavagem 1234');
+});

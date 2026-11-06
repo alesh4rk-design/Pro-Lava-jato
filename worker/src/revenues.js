@@ -4,7 +4,7 @@ import { readJson, errors } from './lib/http.js';
 import * as v from './lib/validate.js';
 import { parseCommon, insertEntry, listEntries, getEntry, findEntry, applyUpdate, cancelEntry } from './entries.js';
 import { requireActiveService, estimateServiceCostCents } from './services.js';
-import { requireActiveCustomer } from './customers.js';
+import { requireActiveCustomer, parsePlate } from './customers.js';
 
 const ledger = {
   table: 'revenues',
@@ -12,20 +12,20 @@ const ledger = {
   entity: 'revenue',
   label: 'Receita',
   select: `SELECT r.id, r.date, r.service_id, s.name AS service_name, r.description, r.amount_cents, r.payment_method,
-                  r.notes, r.service_cost_snapshot_cents, r.customer_id, cust.name AS customer_name, r.status, r.cancel_reason, r.cancelled_at, cu.name AS cancelled_by_name,
+                  r.notes, r.service_cost_snapshot_cents, r.customer_id, cust.name AS customer_name, r.plate, r.status, r.cancel_reason, r.cancelled_at, cu.name AS cancelled_by_name,
                   u.name AS user_name, r.created_at, r.updated_at
              FROM revenues r
              JOIN users u ON u.id = r.user_id
              LEFT JOIN services s ON s.tenant_id = r.tenant_id AND s.id = r.service_id
              LEFT JOIN customers cust ON cust.tenant_id = r.tenant_id AND cust.id = r.customer_id
              LEFT JOIN users cu ON cu.id = r.cancelled_by`,
-  searchColumns: ['r.description', 'r.notes', 's.name', 'cust.name'],
+  searchColumns: ['r.description', 'r.notes', 's.name', 'cust.name', 'r.plate'],
   refFilter: { param: 'service_id', column: 'service_id' },
   // Custo estimado é informação gerencial: não vai para o operador.
   adminOnlyFields: ['service_cost_snapshot_cents'],
 };
 
-const FIELDS = ['date', 'amount_cents', 'payment_method', 'description', 'notes', 'service_id', 'customer_id'];
+const FIELDS = ['date', 'amount_cents', 'payment_method', 'description', 'notes', 'service_id', 'customer_id', 'plate'];
 
 /** Serviço opcional; sem serviço, a descrição é obrigatória. Guarda o custo estimado do momento. */
 async function resolveService(env, auth, serviceId, description) {
@@ -44,7 +44,7 @@ export async function createRevenue(ctx) {
   // Cliente que fez a limpeza (opcional): precisa ser um cliente ativo deste lava-jato.
   const customerId = v.optionalBodyId(body.customer_id, 'cliente');
   if (customerId !== null) await requireActiveCustomer(ctx.env, ctx.auth.tenantId, customerId);
-  return await insertEntry(ledger, ctx, { ...data, ...service, customer_id: customerId });
+  return await insertEntry(ledger, ctx, { ...data, ...service, customer_id: customerId, plate: parsePlate(body.plate) });
 }
 
 export async function updateRevenue(ctx) {
@@ -58,6 +58,10 @@ export async function updateRevenue(ctx) {
     Object.assign(changes, await resolveService(ctx.env, ctx.auth, serviceId, description));
   } else if (serviceId === null && !description) {
     throw errors.validation('Informe o serviço ou uma descrição.');
+  }
+  if (body.plate !== undefined) {
+    const plate = parsePlate(body.plate);
+    if (plate !== current.plate) changes.plate = plate;
   }
   if (body.customer_id !== undefined) {
     const customerId = v.optionalBodyId(body.customer_id, 'cliente');
