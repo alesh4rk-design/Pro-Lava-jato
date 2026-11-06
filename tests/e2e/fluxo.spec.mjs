@@ -601,6 +601,128 @@ test('receita com o cliente que fez a limpeza: cadastro na hora, busca e histór
   await expect(owner.locator('.entry-row.is-in', { hasText: 'Maria Teste' })).toHaveCount(0);
 });
 
+test('financeiro: teste grátis, pagamento, atraso que corta o acesso, cobrança, cancelamento e estorno', async ({ browser, playwright }) => {
+  test.setTimeout(120_000);
+  const NEW = { email: 'cobranca@teste.test', password: 'Cobra12345', business: 'Cobrança Teste', phone: '11977776666' };
+  const day = (offset) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + offset * 86_400_000));
+  const br = (iso) => iso.split('-').reverse().join('/');
+  const system = await openPage(browser, playwright);
+
+  // Cliente novo pede acesso (conta criada no Firebase falso) e o administrador do sistema autoriza
+  const signUp = await system.request.post('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=x', { data: { email: NEW.email, password: NEW.password, returnSecureToken: true } });
+  const { idToken } = await signUp.json();
+  await system.request.post('http://127.0.0.1:8787/api/access-requests', { data: { business_name: NEW.business, owner_name: 'Carla Cobrança', phone: NEW.phone, id_token: idToken } });
+  await login(system, SYSTEM, { system: true });
+  await system.locator('.tenant-card', { hasText: NEW.business }).locator('.btn-success').click();
+  await system.click('dialog .btn-primary');
+  await expect(lastToast(system)).toContainText('Acesso autorizado');
+
+  // Financeiro: começa em teste grátis
+  await system.click('a:has-text("Financeiro")');
+  await system.waitForURL(/admin-financeiro\.html/);
+  await system.click('#bill-chips [data-state="TODOS"]');
+  const card = system.locator('.billing-card', { hasText: NEW.business });
+  await expect(card).toContainText('Teste até');
+  await expect(card).toContainText('Valor da mensalidade não definido');
+
+  // Plano: valor mensal
+  await card.locator('button:has-text("Plano")').click();
+  await system.fill('#plan-price', '149,90');
+  await system.click('dialog[open] .btn-primary');
+  await expect(lastToast(system)).toContainText('Plano atualizado');
+  await expect(card).toContainText('R$ 149,90 por mês');
+
+  // Pagamento de 3 meses: o valor sugerido é o plano × meses, e a tela mostra o novo vencimento
+  await card.locator('button:has-text("Registrar pagamento")').click();
+  await system.click('dialog[open] .chip:has-text("3 meses")');
+  await expect(system.locator('#pay-amount')).toHaveValue('449,70');
+  await expect(system.locator('dialog[open]')).toContainText('Novo vencimento:');
+  await system.click('dialog[open] .btn-primary');
+  await expect(lastToast(system)).toContainText('Pagamento registrado. Pago até');
+  await expect(card).toContainText('Em dia');
+  await expect(system.locator('#bill-summary')).toContainText('R$ 449,70'); // recebido no mês
+  await expect(system.locator('#bill-summary')).toContainText('R$ 149,90'); // previsto por mês
+
+  // Vence faz 10 dias: passou da tolerância, sem acesso
+  await card.locator('button:has-text("Plano")').click();
+  await system.fill('#plan-until', day(-10));
+  await system.click('dialog[open] .btn-primary');
+  await expect(lastToast(system)).toContainText('Plano atualizado');
+  await expect(card).toContainText('Vencida · sem acesso');
+  await system.click('#bill-chips [data-state="ATENCAO"]');
+  await expect(system.locator('.billing-card', { hasText: NEW.business })).toBeVisible();
+
+  const tenantPage = await openPage(browser, playwright);
+  await tenantPage.goto('login.html');
+  await tenantPage.fill('#login-email', NEW.email);
+  await tenantPage.fill('#login-password', NEW.password);
+  await tenantPage.click('#login-submit');
+  await expect(tenantPage.locator('#form-alert')).toContainText('mensalidade');
+
+  // Cobrança por WhatsApp com o texto pronto
+  await system.evaluate(() => { window.__opened = []; window.open = (url) => { window.__opened.push(url); return null; }; });
+  await system.locator('.billing-card', { hasText: NEW.business }).locator('button:has-text("Cobrar")').click();
+  await expect(system.locator('#collect-text')).toHaveValue(new RegExp(`Olá, Carla! .*${NEW.business}.*venceu em ${br(day(-10))}.*R\\$.149,90`));
+  await system.click('dialog[open] .btn-success');
+  const sent = new URL(await system.evaluate(() => window.__opened[0]));
+  expect(sent.origin + sent.pathname).toBe('https://wa.me/5511977776666');
+
+  // Pagou: o acesso volta na hora
+  await system.click('#bill-chips [data-state="TODOS"]');
+  await system.locator('.billing-card', { hasText: NEW.business }).locator('button:has-text("Registrar pagamento")').click();
+  await system.click('dialog[open] .btn-primary');
+  await expect(lastToast(system)).toContainText('Pagamento registrado');
+  await tenantPage.fill('#login-password', NEW.password);
+  await tenantPage.click('#login-submit');
+  await tenantPage.waitForURL(/dashboard\.html/);
+  await expect(tenantPage.locator('#billing-alert')).toBeHidden(); // em dia: sem aviso
+
+  // Vence em 2 dias: o administrador do lava-jato é avisado no Início
+  await system.locator('.billing-card', { hasText: NEW.business }).locator('button:has-text("Plano")').click();
+  await system.fill('#plan-until', day(2));
+  await system.click('dialog[open] .btn-primary');
+  await expect(lastToast(system)).toContainText('Plano atualizado');
+  await tenantPage.reload();
+  await expect(tenantPage.locator('#billing-alert')).toContainText('Sua mensalidade vence em 2 dias');
+
+  // Cancelar: o acesso fica até a data paga; reativar volta
+  await system.locator('.billing-card', { hasText: NEW.business }).locator('button:has-text("Cancelar assinatura")').click();
+  await system.fill('#cancel-reason', 'Pediu para sair');
+  await system.click('dialog[open] .btn-danger');
+  await expect(lastToast(system)).toContainText('Assinatura cancelada');
+  const cancelled = system.locator('.billing-card', { hasText: NEW.business });
+  await expect(cancelled).toContainText('Cancelada · acesso até');
+  await expect(cancelled).toContainText('Motivo do cancelamento: Pediu para sair');
+  await tenantPage.reload();
+  await expect(tenantPage.locator('#billing-alert')).toContainText('Assinatura cancelada');
+  await cancelled.locator('button:has-text("Reativar")').click();
+  await system.click('dialog[open] .btn-primary');
+  await expect(lastToast(system)).toContainText('Assinatura reativada');
+  await expect(system.locator('.billing-card', { hasText: NEW.business })).not.toContainText('Cancelada');
+
+  // Estorno do último pagamento (o vencimento foi ajustado à mão, então primeiro volta ao calculado)
+  await system.locator('.billing-card', { hasText: NEW.business }).locator('button:has-text("Pagamentos")').click();
+  await expect(system.locator('dialog[open] .payment-row')).toHaveCount(2);
+  await expect(system.locator('dialog[open] button:has-text("Estornar")')).toHaveCount(0); // vencimento ajustado: estorno recusado pela tela
+  await system.click('dialog[open] button:has-text("Fechar")');
+
+  // A auditoria do sistema registra tudo; a do lava-jato não mostra nada disso
+  await system.goto('admin-auditoria.html');
+  await expect(system.locator('.audit-row', { hasText: `Registrou pagamento de R$ 449,70 de ${NEW.business}` })).toBeVisible();
+  await expect(system.locator('.audit-row', { hasText: `Cancelou a assinatura de ${NEW.business}` })).toContainText('Pediu para sair');
+  await tenantPage.goto('auditoria.html');
+  await expect(tenantPage.locator('#audit-list')).not.toContainText('pagamento');
+  await expect(tenantPage.locator('#audit-list')).not.toContainText('assinatura');
+
+  // Telas do administrador do sistema não rolam para o lado
+  for (const name of ['admin', 'admin-financeiro']) {
+    await system.goto(`${name}.html`);
+    await system.waitForLoadState('networkidle');
+    expect(await noHorizontalScroll(system), name).toBe(true);
+  }
+  expect(system.problems).toEqual([]);
+});
+
 test('telas novas não rolam para o lado em 360px', async () => {
   for (const name of ['clientes', 'recorrentes']) {
     await owner.goto(`${name}.html`);

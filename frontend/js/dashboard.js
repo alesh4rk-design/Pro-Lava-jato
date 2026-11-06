@@ -9,6 +9,7 @@ import { el, icon, stateView } from './ui.js';
 import { periodPicker } from './periods.js';
 import { config } from './config.js';
 import { whenText } from './recorrentes-text.js';
+import { subscriptionNotice } from './cobranca.js';
 
 const content = document.getElementById('dash-content');
 const label = document.getElementById('period-label');
@@ -170,6 +171,21 @@ async function loadMyDay() {
   }
 }
 
+/** Aviso da mensalidade do sistema (vencendo, atrasada, teste acabando ou cancelada). Só para o administrador. */
+async function loadBillingAlert() {
+  try {
+    const { subscription } = await api.get('/auth/me');
+    const notice = subscriptionNotice(subscription);
+    if (!notice) return;
+    const box = document.getElementById('billing-alert');
+    box.classList.toggle('is-urgent', notice.urgent);
+    box.replaceChildren(el('div', { class: 'due-alert-head' }, icon('alert', 'icon icon-sm'), el('strong', {}, notice.text)));
+    box.hidden = false;
+  } catch {
+    // aviso complementar: falha aqui não atrapalha o início
+  }
+}
+
 function init() {
   if (!session) return;
   loadStockAlert();
@@ -181,6 +197,7 @@ function init() {
     return;
   }
   loadDueAlert();
+  loadBillingAlert();
   periodPicker({
     container: document.getElementById('period-chips'),
     storageKey: 'lj.dashboard.period',

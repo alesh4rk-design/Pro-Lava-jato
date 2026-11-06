@@ -88,3 +88,16 @@ export function localDaysToUtcRange(start, end, timeZone) {
     to: new Date(endGuess - tzOffsetMs(timeZone, endGuess)).toISOString(),
   };
 }
+
+/** Soma meses a uma data (YYYY-MM-DD); o dia vira o último do mês quando não existe (31/01 + 1 mês = 28/02). */
+export function addMonths(iso, months) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const index = y * 12 + (m - 1) + months;
+  const year = Math.floor(index / 12);
+  const month = index % 12;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  return `${String(year).padStart(4, '0')}-${String(month + 1).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`;
+}
+
+/** Dias de `from` até `to` (negativo se `to` for antes). */
+export const daysBetween = (from, to) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev https://identitytoolkit.googleapis.com http://127.0.0.1:8787 http://127.0.0.1:9099; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0a6e7d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="LJ Gestão">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Financeiro · Lava-Jato Gestão</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/mobile.css">
+  <script type="module" src="js/admin-financeiro.js"></script>
+</head>
+<body data-back="admin.html" data-back-label="Voltar para Clientes" data-page="admin" data-scope="system" data-roles="SUPER_ADMIN">
+  <main class="page page-no-nav">
+    <div class="page-title"><h1>Financeiro</h1></div>
+    <p class="muted">Controle das mensalidades: quem pagou, quem está atrasado e quem cancelou. O acesso de um lava-jato é cortado sozinho 3 dias depois do vencimento.</p>
+
+    <div class="bill-summary" id="bill-summary" aria-live="polite"></div>
+
+    <div class="field">
+      <label class="sr-only" for="bill-search">Buscar cliente</label>
+      <input class="input" id="bill-search" type="search" placeholder="Buscar por nome ou e-mail" maxlength="80" autocomplete="off">
+    </div>
+    <div class="chips" role="group" aria-label="Situação da mensalidade" id="bill-chips"></div>
+
+    <div class="section" id="bill-list" aria-live="polite"></div>
+  </main>
+</body>
+</html>

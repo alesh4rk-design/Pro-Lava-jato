@@ -19,6 +19,7 @@ import * as settings from './settings.js';
 import * as recurring from './recurring.js';
 import * as customers from './customers.js';
 import * as myDay from './my-day.js';
+import * as billing from './billing.js';
 
 const { ADMIN, OPERADOR } = ROLES;
 const PUBLIC = null;
@@ -105,6 +106,13 @@ const ROUTES = [
   ['POST', '/api/system/auth/logout', SYSTEM, [], authRoutes.logout],
   ['GET', '/api/system/tenants', SYSTEM, [], system.listTenants],
   ['GET', '/api/system/audit', SYSTEM, [], listSystemAudit],
+  ['GET', '/api/system/billing', SYSTEM, [], billing.listBilling],
+  ['GET', '/api/system/billing/:id/payments', SYSTEM, [], billing.listPayments],
+  ['POST', '/api/system/billing/:id/payments', SYSTEM, [], billing.registerPayment],
+  ['PUT', '/api/system/billing/:id/plan', SYSTEM, [], billing.updatePlan],
+  ['POST', '/api/system/billing/:id/cancel', SYSTEM, [], billing.cancelSubscription],
+  ['POST', '/api/system/billing/:id/reactivate', SYSTEM, [], billing.reactivateSubscription],
+  ['POST', '/api/system/payments/:id/reverse', SYSTEM, [], billing.reversePayment],
   ['PUT', '/api/system/tenants/:id', SYSTEM, [], system.updateTenant],
   ['POST', '/api/system/tenants/:id/:action', SYSTEM, [], system.changeTenantStatus],
 ].map(([method, path, scope, roles, handler]) => ({

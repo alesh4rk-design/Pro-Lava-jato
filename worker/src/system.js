@@ -4,6 +4,9 @@
 import { ok, errors, readJson } from './lib/http.js';
 import * as v from './lib/validate.js';
 import { auditStatement, actorOf } from './audit.js';
+import { today, addDays } from './lib/dates.js';
+import { TRIAL_DAYS } from './lib/billing.js';
+import { timeZone } from './entries.js';
 
 const STATUSES = ['PENDENTE', 'ATIVO', 'BLOQUEADO'];
 const PAGE_SIZE = 50;
@@ -57,9 +60,10 @@ export async function changeTenantStatus({ env, auth, params, ip }) {
       `UPDATE tenants SET status = ?1, updated_at = ?2,
          approved_by = CASE WHEN ?3 = 'approve' THEN ?4 ELSE approved_by END,
          approved_at = CASE WHEN ?3 = 'approve' THEN ?2 ELSE approved_at END,
-         blocked_at  = CASE WHEN ?1 = 'BLOQUEADO' THEN ?2 ELSE NULL END
+         blocked_at  = CASE WHEN ?1 = 'BLOQUEADO' THEN ?2 ELSE NULL END,
+         paid_until  = CASE WHEN ?3 = 'approve' AND paid_until IS NULL THEN ?7 ELSE paid_until END
        WHERE id = ?5 AND status = ?6`,
-    ).bind(transition.to, now, params.action, auth.adminId, tenantId, tenant.status),
+    ).bind(transition.to, now, params.action, auth.adminId, tenantId, tenant.status, addDays(today(timeZone(env)), TRIAL_DAYS)),
     await auditStatement(env, {
       tenantId, actor: actorOf(auth), action: transition.action, entity: 'tenant', entityId: tenantId,
       details: { business_name: tenant.business_name, from: tenant.status, to: transition.to }, ip,
