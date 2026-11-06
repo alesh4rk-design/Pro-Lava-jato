@@ -925,3 +925,24 @@ body.install-open { padding-bottom: 170px; }
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* Financeiro (administrador do sistema) */
+.admin-summary .card.is-attention { border-color: var(--warning); background: var(--warning-soft); }
+.billing-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.billing-actions .btn { min-width: 0; padding-inline: var(--space-2); }
+.billing-actions .billing-main { grid-column: 1 / -1; }
+.billing-card.state-VENCIDA, .billing-card.state-EM_ATRASO { border-color: var(--danger); }
+.billing-card.state-VENCENDO { border-color: var(--warning); }
+.payment-row.is-reversed { opacity: 0.65; }
+.page-title .btn + .btn { margin-left: var(--space-2); }
+
+/* Cabeçalho com mais de um botão: quebra de linha em vez de estourar a largura do celular */
+.page-title { flex-wrap: wrap; row-gap: var(--space-2); }
+.title-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-left: auto; }
+
+/* Resumo do financeiro: dois valores lado a lado e o alerta embaixo, para os números não quebrarem em 360px */
+.bill-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.bill-summary .card { padding: var(--space-3) var(--space-4); }
+.bill-summary .card:last-child { grid-column: 1 / -1; }
+.bill-summary .stat-value { font-size: var(--fs-lg); white-space: nowrap; }
+.bill-summary .card.is-attention { border-color: var(--warning); background: var(--warning-soft); }

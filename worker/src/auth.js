@@ -8,6 +8,8 @@ import { verifyFirebaseToken } from './lib/firebase.js';
 import { rateLimit, resetRateLimit, SESSION_TTL_MS } from './middleware.js';
 import { audit, auditStatement, actorOf } from './audit.js';
 import { seedDefaultCategories } from './categories.js';
+import { billingState } from './lib/billing.js';
+import { today } from './lib/dates.js';
 
 const LOGIN_WINDOW_S = 15 * 60;
 
@@ -35,7 +37,7 @@ export async function tenantLogin({ request, env, ip }) {
   const identity = await verifyFirebaseToken(env, body.id_token);
 
   const user = await env.DB.prepare(
-    `SELECT u.id, u.name, u.role, u.active, t.id AS tenant_id, t.business_name, t.status
+    `SELECT u.id, u.name, u.role, u.active, t.id AS tenant_id, t.business_name, t.status, t.subscription_status, t.paid_until
        FROM users u JOIN tenants t ON t.id = u.tenant_id WHERE u.firebase_uid = ?`,
   ).bind(identity.uid).first();
 
@@ -47,6 +49,7 @@ export async function tenantLogin({ request, env, ip }) {
   if (user.status === 'PENDENTE') throw new ApiError(403, 'ACCESS_PENDING', 'Seu acesso ainda não foi autorizado pelo administrador do sistema.');
   if (user.status === 'BLOQUEADO') throw new ApiError(403, 'ACCESS_BLOCKED', 'Acesso bloqueado. Entre em contato com o administrador do sistema.');
   if (!user.active) throw new ApiError(403, 'USER_INACTIVE', 'Usuário desativado. Fale com o administrador do lava-jato.');
+  if (!billingState(user, today(env.TIMEZONE || 'America/Sao_Paulo')).access) throw errors.subscriptionExpired();
 
   const { token, statement } = await createSession(env, { userId: user.id, tenantId: user.tenant_id }, 'tenant');
   await env.DB.batch([
@@ -66,6 +69,8 @@ export function me({ auth }) {
   return ok({
     user: { id: auth.userId, name: auth.name, role: auth.role, email: auth.email },
     tenant: { id: auth.tenantId, name: auth.tenantName },
+    // A situação da mensalidade só vai para o administrador do lava-jato (o operador não precisa saber).
+    ...(auth.role === 'ADMIN' ? { subscription: { state: auth.subscription.state, paid_until: auth.subscription.paid_until, days_left: auth.subscription.days_left } } : {}),
   });
 }
 

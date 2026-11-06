@@ -5,13 +5,14 @@ import { PAYMENT_LABELS, EXPENSE_TYPE_LABELS } from './entry-form.js';
 
 const ROLE = { ADMIN: 'Administrador', OPERADOR: 'Operador' };
 const PIX_TYPES = { CPF: 'CPF', CNPJ: 'CNPJ', EMAIL: 'e-mail', TELEFONE: 'telefone', ALEATORIA: 'aleatória' };
+const SUBSCRIPTION = { TESTE: 'teste', ATIVA: 'ativa', CANCELADA: 'cancelada', ISENTA: 'isenta' };
 const FREQ = { DIARIA: 'diária', SEMANAL: 'semanal', MENSAL: 'mensal' };
 const MOVEMENT = { ENTRADA: 'compra', SAIDA: 'consumo', AJUSTE: 'ajuste de estoque' };
 
 const FIELD_LABELS = {
   amount_cents: 'valor', payment_method: 'pagamento', date: 'data', description: 'descrição', notes: 'observação',
   service_id: 'serviço', category_id: 'categoria', type: 'tipo', name: 'nome', role: 'perfil', active: 'situação',
-  price_cents: 'preço', customer_id: 'cliente', pix_key: 'chave PIX', pix_key_type: 'tipo da chave PIX', pix_holder: 'recebedor do PIX', frequency: 'frequência', weekday: 'dia da semana', month_day: 'dia do mês', end_date: 'data final', business_name: 'nome do lava-jato', phone: 'telefone', min_stock_qty: 'estoque mínimo', default_expense_type: 'tipo padrão',
+  price_cents: 'preço', plan_price_cents: 'mensalidade', paid_until: 'pago até', subscription_status: 'assinatura', customer_id: 'cliente', pix_key: 'chave PIX', pix_key_type: 'tipo da chave PIX', pix_holder: 'recebedor do PIX', frequency: 'frequência', weekday: 'dia da semana', month_day: 'dia do mês', end_date: 'data final', business_name: 'nome do lava-jato', phone: 'telefone', min_stock_qty: 'estoque mínimo', default_expense_type: 'tipo padrão',
 };
 
 function fieldValue(field, value) {
@@ -23,6 +24,8 @@ function fieldValue(field, value) {
   if (field === 'role') return ROLE[value] ?? value;
   if (field === 'pix_key_type') return PIX_TYPES[value] ?? (value || '—');
   if (field === 'customer_id') return value ? 'informado' : 'sem cliente';
+  if (field === 'paid_until') return value ? formatDate(value) : '—';
+  if (field === 'subscription_status') return SUBSCRIPTION[value] ?? value;
   if (field === 'frequency') return FREQ[value] ?? value;
   if (field === 'end_date') return formatDate(value);
   if (field === 'active') return value === true || value === 1 ? 'ativo' : 'inativo';
@@ -63,6 +66,11 @@ const DESCRIBE = {
   CUSTOMER_CONTACTED: (d) => [`Abriu o WhatsApp para ${d.name}`, d.template ? `mensagem: ${d.template}` : 'mensagem livre'],
   TEMPLATE_CREATED: (d) => [`Criou a mensagem pronta ${d.title}`],
   TEMPLATE_UPDATED: (d) => [`Alterou a mensagem pronta ${d.title}`],
+  PAYMENT_REGISTERED: (d) => [`Registrou pagamento de ${money(d.amount_cents)} de ${d.business_name}`, `${d.months} ${d.months === 1 ? 'mês' : 'meses'} · pago até ${d.paid_until ? formatDate(d.paid_until) : '—'}`],
+  PAYMENT_REVERSED: (d) => [withReason(`Estornou pagamento de ${money(d.amount_cents)} de ${d.business_name}`, d.reason), d.paid_until ? `vencimento voltou para ${formatDate(d.paid_until)}` : ''],
+  PLAN_CHANGED: (d) => [`Alterou o plano de ${d.business_name}`, changes(d.before, d.after)],
+  SUBSCRIPTION_CANCELLED: (d) => [withReason(`Cancelou a assinatura de ${d.business_name}`, d.reason), d.blocked_now ? 'acesso bloqueado na hora' : d.paid_until ? `acesso até ${formatDate(d.paid_until)}` : ''],
+  SUBSCRIPTION_REACTIVATED: (d) => [`Reativou a assinatura de ${d.business_name}`],
   CATEGORY_CREATED: (d) => [`Criou a categoria ${d.name}`],
   CATEGORY_UPDATED: (d) => [`Alterou a categoria ${d.before?.name ?? ''}`.trim(), changes(d.before, d.changes)],
   SERVICE_CREATED: (d) => [`Cadastrou o serviço ${d.name}`, money(d.price_cents)],

@@ -45,7 +45,9 @@ const passwordHash = async () => (cachedHash ??= await hashPassword(PASSWORD));
 
 /** Cria um lava-jato com um usuário. Retorna ids e e-mail. */
 export async function seedTenant({ status = 'ATIVO', role = 'ADMIN', active = 1, name = 'Lava Teste' } = {}) {
-  const tenant = await env.DB.prepare('INSERT INTO tenants (business_name, status) VALUES (?, ?) RETURNING id').bind(name, status).first();
+  // Em produção, autorizar o cliente começa o teste grátis; aqui o lava-jato já nasce com a mensalidade em dia.
+  const paidUntil = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  const tenant = await env.DB.prepare('INSERT INTO tenants (business_name, status, paid_until) VALUES (?, ?, ?) RETURNING id').bind(name, status, paidUntil).first();
   const email = `${unique('user')}@teste.com`;
   const user = await env.DB.prepare(
     'INSERT INTO users (tenant_id, name, email, password_hash, firebase_uid, role, active) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',

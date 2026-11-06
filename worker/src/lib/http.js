@@ -13,6 +13,7 @@ export const errors = {
   badRequest: (message = 'Requisição inválida.') => new ApiError(400, 'BAD_REQUEST', message),
   unauthenticated: () => new ApiError(401, 'UNAUTHENTICATED', 'Sessão expirada. Entre novamente.'),
   invalidCredentials: () => new ApiError(401, 'INVALID_CREDENTIALS', 'E-mail ou senha inválidos.'),
+  subscriptionExpired: () => new ApiError(403, 'SUBSCRIPTION_EXPIRED', 'A mensalidade do lava-jato está vencida. Fale com o responsável pelo sistema para regularizar.'),
   forbidden: () => new ApiError(403, 'FORBIDDEN', 'Você não tem permissão para esta ação.'),
   notFound: (message = 'Recurso não encontrado.') => new ApiError(404, 'NOT_FOUND', message),
   conflict: (message) => new ApiError(409, 'CONFLICT', message),

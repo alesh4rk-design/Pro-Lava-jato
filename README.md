@@ -20,6 +20,14 @@ Cloudflare D1 (SQLite, dinheiro em centavos)
 
 **O que o operador vê:** só o necessário para lançar. Início com "Seus lançamentos de hoje" (apenas o que ele mesmo lançou, sem totais, saldo, margem nem lançamentos de outras pessoas), Lançar, Produtos e estoque (sem custos), Serviços (sem custos), Clientes e mensagens. Painel, Caixa, Análise, listas de lançamentos, relatórios, categorias, usuários, configurações e auditoria são só do administrador; a API recusa (403) mesmo se alguém tentar chamar direto, e o operador só abre o detalhe de um lançamento que ele mesmo fez hoje.
 
+**Mensalidade e acesso (painel Financeiro do administrador do sistema):** o controle é manual, sem cobrança automática: você registra o pagamento recebido e o sistema cuida do vencimento e do acesso.
+- Ao autorizar um cliente novo ele ganha **7 dias de teste**. Quem já usava ganhou 30 dias para combinar o plano.
+- **Registrar pagamento** (1, 3, 6 ou 12 meses) renova a partir do vencimento atual, se ainda vale, ou de hoje, se já venceu. Só o **último** pagamento pode ser **estornado** (e só se o vencimento não foi ajustado depois).
+- Situações: **em dia**, **vencendo** (5 dias ou menos), **em atraso** (até 3 dias de tolerância, ainda usa), **vencida** (sem acesso), **teste**, **cancelada** e **isenta** (cortesia, nunca vence).
+- **Acesso cortado** na própria API (login e sessões abertas respondem 403 `SUBSCRIPTION_EXPIRED`) 3 dias depois do vencimento; pagar libera na hora. A assinatura **cancelada** vale até a data já paga (e dá para bloquear na hora).
+- Botão **Cobrar** abre o WhatsApp com a mensagem de cobrança pronta (você confere e envia). O administrador do lava-jato vê um aviso no Início quando a mensalidade está para vencer, atrasada ou cancelada; o operador não vê nada disso.
+- Tudo fica na auditoria do sistema e nunca aparece para os lava-jatos.
+
 **Regra de perfis:** o administrador do lava-jato é sempre quem pediu o acesso; ninguém é promovido a administrador (nem rebaixado). Ele só cadastra **operadores**, no máximo **2 ativos** por lava-jato (desativar um libera a vaga; reativar também respeita o limite). A API aplica a regra, inclusive com cadastros simultâneos.
 
 Um novo lava-jato usa **"Solicitar acesso"** na tela de login, informando o próprio nome. A conta fica
@@ -78,6 +86,11 @@ npx wrangler d1 execute lava-jato-db --local --file=.admin.sql && rm .admin.sql
 | GET | `/api/audit?period=&group=&user_id=` | ADMIN (auditoria do lava-jato) |
 | GET / PUT | `/api/settings` | ADMIN (nome e telefone do lava-jato) |
 | GET | `/api/system/audit?period=` | administrador do sistema |
+| GET | `/api/system/billing?state=&q=` | administrador do sistema (financeiro: situação de cada lava-jato, contagens, recebido no mês e previsto) |
+| GET / POST | `/api/system/billing/:id/payments` | administrador do sistema (histórico; registrar pagamento) |
+| PUT | `/api/system/billing/:id/plan` | administrador do sistema (valor da mensalidade, isenção, vencimento) |
+| POST | `/api/system/billing/:id/cancel` · `reactivate` | administrador do sistema (cancelar e reativar a assinatura) |
+| POST | `/api/system/payments/:id/reverse` | administrador do sistema (estornar o último pagamento) |
 | GET | `/api/categories?kind=` | lava-jato (ADMIN vê inativas) |
 | POST / PUT | `/api/categories` · `/:id` | ADMIN |
 | GET | `/api/services` · `/:id` | lava-jato (custos e margens só ADMIN) |

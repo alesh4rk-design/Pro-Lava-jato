@@ -57,6 +57,11 @@ async function request(method, path, body) {
     clearSession();
     location.replace('login.html?expirada=1');
   }
+  // Mensalidade do lava-jato vencida: encerra a sessão e explica na tela de login.
+  if (status === 403 && code === 'SUBSCRIPTION_EXPIRED' && path !== '/auth/login') {
+    clearSession();
+    location.replace('login.html?assinatura=1');
+  }
   throw new ApiError(code, payload?.error?.message ?? GENERIC_ERROR, status);
 }
 

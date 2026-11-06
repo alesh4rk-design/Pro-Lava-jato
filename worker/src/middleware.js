@@ -2,6 +2,8 @@
 
 import { errors } from './lib/http.js';
 import { sha256Hex } from './lib/crypto.js';
+import { billingState } from './lib/billing.js';
+import { today } from './lib/dates.js';
 
 /* CORS ---------------------------------------------------------------------- */
 
@@ -61,7 +63,7 @@ export async function authenticateTenant(request, env) {
   if (!token) throw errors.unauthenticated();
   const now = new Date();
   const row = await env.DB.prepare(
-    `SELECT s.id, s.last_seen_at, u.id AS user_id, u.name, u.role, u.email, t.id AS tenant_id, t.business_name
+    `SELECT s.id, s.last_seen_at, u.id AS user_id, u.name, u.role, u.email, t.id AS tenant_id, t.business_name, t.subscription_status, t.paid_until
        FROM sessions s
        JOIN users u   ON u.id = s.user_id AND u.tenant_id = s.tenant_id
        JOIN tenants t ON t.id = s.tenant_id
@@ -69,6 +71,10 @@ export async function authenticateTenant(request, env) {
         AND u.active = 1 AND t.status = 'ATIVO'`,
   ).bind(await sha256Hex(token), now.toISOString(), maxAgeCutoff('tenant', now)).first();
   if (!row) throw errors.unauthenticated();
+
+  // Mensalidade vencida (passada a tolerância) ou cancelada e já sem data paga: sem acesso.
+  const billing = billingState(row, today(env.TIMEZONE || 'America/Sao_Paulo', now));
+  if (!billing.access) throw errors.subscriptionExpired();
 
   await touchSession(env, row, 'tenant', now.getTime());
   return {
@@ -80,6 +86,7 @@ export async function authenticateTenant(request, env) {
     name: row.name,
     email: row.email,
     tenantName: row.business_name,
+    subscription: billing,
   };
 }
 

@@ -220,3 +220,52 @@ test('cliente novo na hora: o que foi digitado vira nome, menos telefone ou plac
   assert.equal(nameFromSearch('11 98888-7777'), '');
   assert.equal(nameFromSearch(''), '');
 });
+
+import { addMonths as addMonthsFront, nextPaidUntil, stateBadge, dueLine, collectionMessage, subscriptionNotice } from '../frontend/js/cobranca.js';
+
+test('cobrança: contas de data iguais às do servidor', () => {
+  assert.equal(addMonthsFront('2026-01-31', 1), '2026-02-28');
+  assert.equal(addMonthsFront('2028-01-31', 1), '2028-02-29');
+  assert.equal(addMonthsFront('2026-11-15', 3), '2027-02-15');
+  assert.equal(nextPaidUntil({ paidUntil: '2026-11-10', today: '2026-10-18', months: 1 }), '2026-12-10'); // ainda vale: soma ao vencimento
+  assert.equal(nextPaidUntil({ paidUntil: '2026-09-01', today: '2026-10-18', months: 1 }), '2026-11-18'); // já venceu: conta de hoje
+  assert.equal(nextPaidUntil({ paidUntil: null, today: '2026-10-18', months: 2 }), '2026-12-18');
+});
+
+test('cobrança: selos, linha de vencimento e mensagem', () => {
+  const b = (state, days_left, paid_until = '2026-10-25', access = true) => ({ state, days_left, paid_until, access });
+  assert.deepEqual(stateBadge(b('EM_DIA', 30)), { label: 'Em dia', tone: 'badge-success' });
+  assert.equal(stateBadge(b('VENCENDO', 0)).label, 'Vence hoje');
+  assert.equal(stateBadge(b('VENCENDO', 1)).label, 'Vence em 1 dia');
+  assert.equal(stateBadge(b('VENCENDO', 4)).label, 'Vence em 4 dias');
+  assert.equal(stateBadge(b('EM_ATRASO', -1)).label, 'Atrasada há 1 dia');
+  assert.equal(stateBadge(b('EM_ATRASO', -3)).label, 'Atrasada há 3 dias');
+  assert.equal(stateBadge(b('VENCIDA', -9)).tone, 'badge-danger');
+  assert.equal(stateBadge(b('TESTE', 3)).label, 'Teste até 25/10');
+  assert.equal(stateBadge(b('CANCELADA', 7)).label, 'Cancelada · acesso até 25/10');
+  assert.equal(stateBadge(b('CANCELADA', -2, '2026-10-25', false)).label, 'Cancelada · sem acesso');
+  assert.equal(stateBadge(b('ISENTA', null, null)).label, 'Isenta');
+  assert.equal(dueLine(b('EM_DIA', 7)), 'Pago até 25/10/2026 · faltam 7 dias');
+  assert.equal(dueLine(b('EM_ATRASO', -2)), 'Pago até 25/10/2026 · venceu há 2 dias');
+  assert.equal(dueLine(b('TESTE', 0)), 'Teste até 25/10/2026 · vence hoje');
+  assert.equal(dueLine(b('ISENTA', null, null)), '');
+
+  const overdue = collectionMessage({ owner: 'Carlos Silva', business: 'Brilho Car', billing: b('EM_ATRASO', -2, '2026-10-16'), priceCents: 14990 });
+  assert.ok(overdue.startsWith('Olá, Carlos!'));
+  assert.ok(overdue.includes('venceu em 16/10/2026'));
+  assert.ok(overdue.replace(/\u00a0/g, ' ').includes('R$ 149,90')); // o formatador usa espaço não quebrável
+  assert.ok(!collectionMessage({ owner: '', business: 'X', billing: b('VENCENDO', 0, '2026-10-18'), priceCents: 0 }).includes('Valor:'));
+});
+
+test('aviso de mensalidade para o administrador do lava-jato', () => {
+  const sub = (state, days_left, paid_until = '2026-10-25') => ({ state, days_left, paid_until });
+  assert.equal(subscriptionNotice(sub('EM_DIA', 20)), null);
+  assert.equal(subscriptionNotice(sub('ISENTA', null, null)), null);
+  assert.equal(subscriptionNotice(sub('TESTE', 6)), null);
+  assert.equal(subscriptionNotice(undefined), null);
+  assert.deepEqual(subscriptionNotice(sub('VENCENDO', 0)), { urgent: true, text: 'Sua mensalidade vence hoje.' });
+  assert.equal(subscriptionNotice(sub('VENCENDO', 4)).urgent, false);
+  assert.match(subscriptionNotice(sub('EM_ATRASO', -2)).text, /Regularize para não perder o acesso/);
+  assert.match(subscriptionNotice(sub('TESTE', 2)).text, /teste termina em 2 dias/);
+  assert.match(subscriptionNotice(sub('CANCELADA', 5)).text, /até 25\/10\/2026/);
+});

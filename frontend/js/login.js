@@ -154,7 +154,9 @@ function init() {
   $('show-login').addEventListener('click', () => setMode('login'));
   $('toggle-system').addEventListener('click', () => setMode(mode === 'system' ? 'login' : 'system'));
   setupPasswordToggles();
-  if (new URLSearchParams(location.search).has('expirada')) showAlert('Sua sessão expirou. Entre novamente.');
+  const params = new URLSearchParams(location.search);
+  if (params.has('expirada')) showAlert('Sua sessão expirou. Entre novamente.');
+  if (params.has('assinatura')) showAlert('A mensalidade do lava-jato está vencida. Fale com o responsável pelo sistema para regularizar.');
   setupInstall();
   registerServiceWorker();
 }

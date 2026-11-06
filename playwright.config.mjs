@@ -12,6 +12,8 @@ export default defineConfig({
     locale: 'pt-BR',
     timezoneId: 'America/Sao_Paulo',
     trace: 'retain-on-failure',
+    // Opcional: usar um Chromium já instalado (ambientes em que o navegador do Playwright tem outra versão).
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : {},
   },
   projects: [{ name: 'celular', use: { ...devices['Pixel 5'], viewport: { width: 360, height: 760 } } }],
   webServer: [
