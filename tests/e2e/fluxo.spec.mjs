@@ -826,6 +826,28 @@ test('importar contatos do celular por arquivo .vcf', async () => {
   await expect(owner.locator('.customer-card', { hasText: 'Rita Contato Importado' })).toHaveCount(1);
 });
 
+test('primeiros passos: tutorial no Início com check automático, ocultar e reabrir', async () => {
+  await owner.goto('dashboard.html');
+  const card = owner.locator('#onboarding');
+  await expect(card).toBeVisible();
+  await expect(card.locator('.onb-step.is-done', { hasText: 'Cadastre seus serviços' })).toBeVisible();
+  await expect(card.locator('.onb-step.is-done', { hasText: 'primeira receita' })).toBeVisible();
+  await expect(card.locator('.onb-step.is-done', { hasText: 'agendamento online' })).toBeVisible();
+  expect(await noHorizontalScroll(owner), 'primeiros passos').toBe(true);
+  await card.locator('button:has-text("Ocultar")').click();
+  await expect(card).toBeHidden();
+  await owner.reload();
+  await expect(owner.locator('#dash-content')).toBeVisible();
+  await expect(card).toBeHidden();
+  await owner.goto('mais.html');
+  await owner.click('#show-onboarding');
+  await owner.waitForURL(/dashboard\.html/);
+  await expect(card).toBeVisible();
+  // O operador não vê o tutorial
+  await operator.goto('dashboard.html');
+  await expect(operator.locator('#onboarding')).toBeHidden();
+});
+
 test('telas novas não rolam para o lado em 360px', async () => {
   for (const name of ['clientes', 'recorrentes']) {
     await owner.goto(`${name}.html`);

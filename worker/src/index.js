@@ -21,6 +21,7 @@ import * as customers from './customers.js';
 import * as myDay from './my-day.js';
 import * as billing from './billing.js';
 import * as booking from './booking.js';
+import * as onboarding from './onboarding.js';
 
 const { ADMIN, OPERADOR } = ROLES;
 const PUBLIC = null;
@@ -72,6 +73,7 @@ const ROUTES = [
   ['GET', '/api/public/appointments/:token', PUBLIC, [], booking.publicView_],
   ['POST', '/api/public/appointments/:token/cancel', PUBLIC, [], booking.publicCancel],
 
+  ['GET', '/api/onboarding', TENANT, [ADMIN], onboarding.getOnboarding],
   ['GET', '/api/dashboard', TENANT, [ADMIN], dashboard.getDashboard],
   ['GET', '/api/audit', TENANT, [ADMIN], listTenantAudit],
   ['GET', '/api/settings', TENANT, [ADMIN], settings.getSettings],

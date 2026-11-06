@@ -324,3 +324,14 @@ test('contatos: lê CSV do Google Contatos e de Excel (;)', () => {
   assert.deepEqual(parseContacts('x.csv', 'Nome;Celular\nLu;11999990000'), [{ name: 'Lu', phone: '11999990000' }]);
   assert.equal(uniqueByPhone([{ name: 'A', phone: '1' }, { name: 'B', phone: '1' }]).length, 1);
 });
+
+import { STEPS, progress } from '../frontend/js/primeiros-passos-lista.js';
+
+test('primeiros passos: progresso e obrigatórios', () => {
+  const none = progress({});
+  assert.equal(none.count, 0);
+  assert.equal(none.requiredDone, false);
+  const required = Object.fromEntries(STEPS.filter((s) => !s.optional).map((s) => [s.key, true]));
+  assert.deepEqual(progress(required), { count: 4, total: STEPS.length, requiredDone: true, allDone: false });
+  assert.equal(progress(Object.fromEntries(STEPS.map((s) => [s.key, true]))).allDone, true);
+});

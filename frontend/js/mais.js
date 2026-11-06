@@ -2,6 +2,7 @@
 
 import { session } from './app.js';
 import { api } from './api.js';
+import { showOnboardingAgain } from './primeiros-passos.js';
 
 async function loadDueBadge() {
   if (!session || session.user.role !== 'ADMIN') return;
@@ -28,6 +29,8 @@ async function loadAgendaBadge() {
     // indicação complementar
   }
 }
+
+document.getElementById('show-onboarding')?.addEventListener('click', () => showOnboardingAgain(session?.tenant?.id));
 
 loadDueBadge();
 loadAgendaBadge();

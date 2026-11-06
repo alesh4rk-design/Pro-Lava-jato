@@ -10,6 +10,8 @@ import { periodPicker } from './periods.js';
 import { config } from './config.js';
 import { whenText } from './recorrentes-text.js';
 import { subscriptionNotice } from './cobranca.js';
+import { renderOnboarding } from './primeiros-passos.js';
+import { promptInstall } from './install.js';
 
 const content = document.getElementById('dash-content');
 const label = document.getElementById('period-label');
@@ -196,6 +198,7 @@ function init() {
     loadMyDay();
     return;
   }
+  renderOnboarding(document.getElementById('onboarding'), { tenantId: session.tenant?.id, onInstall: promptInstall });
   loadDueAlert();
   loadBillingAlert();
   periodPicker({
