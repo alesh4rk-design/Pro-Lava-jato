@@ -99,6 +99,52 @@ export async function createCustomer({ request, env, auth, ip }) {
   return ok(toPublic(inserted.results[0], auth), 201);
 }
 
+const MAX_IMPORT = 200;
+/** Contatos do celular costumam vir com +55: compara sempre sem o código do país. */
+const localPhone = (digits) => (digits.length >= 12 && digits.startsWith('55') ? digits.slice(2) : digits);
+
+/**
+ * Importa contatos do celular (nome + telefone). Ignora telefones inválidos e os que já existem
+ * (no cadastro ou repetidos na lista). Não sobrescreve ninguém. A auditoria guarda só as quantidades.
+ */
+export async function importCustomers({ request, env, auth, ip }) {
+  const body = v.onlyFields(await readJson(request), ['contacts']);
+  if (!Array.isArray(body.contacts) || body.contacts.length === 0 || body.contacts.length > MAX_IMPORT) {
+    throw errors.validation(`Envie de 1 a ${MAX_IMPORT} contatos por vez.`);
+  }
+  const count = await env.DB.prepare('SELECT COUNT(*) AS n FROM customers WHERE tenant_id = ?').bind(auth.tenantId).first();
+  if (count.n + body.contacts.length > MAX_CUSTOMERS) throw errors.invalidState('Limite de clientes atingido.');
+
+  const { results } = await env.DB.prepare('SELECT phone FROM customers WHERE tenant_id = ?').bind(auth.tenantId).all();
+  const seen = new Set(results.map((r) => localPhone(r.phone)));
+  const valid = [];
+  let invalid = 0;
+  let duplicates = 0;
+  for (const raw of body.contacts) {
+    let name;
+    let phone;
+    try {
+      if (!raw || typeof raw !== 'object') throw errors.validation();
+      name = v.text(raw.name, { field: 'nome', min: 2, max: 80 });
+      phone = localPhone(v.phone(raw.phone));
+      if (phone.length < 10) throw errors.validation();
+    } catch {
+      invalid += 1;
+      continue;
+    }
+    if (seen.has(phone)) { duplicates += 1; continue; }
+    seen.add(phone);
+    valid.push({ name, phone });
+  }
+  if (valid.length) {
+    await env.DB.batch([
+      ...valid.map((c) => env.DB.prepare('INSERT INTO customers (tenant_id, created_by, name, phone) VALUES (?, ?, ?, ?)').bind(auth.tenantId, auth.userId, c.name, c.phone)),
+      await auditStatement(env, { tenantId: auth.tenantId, actor: actorOf(auth), action: 'CUSTOMERS_IMPORTED', entity: 'customer', details: { created: valid.length, duplicates, invalid }, ip }),
+    ]);
+  }
+  return ok({ created: valid.length, duplicates, invalid }, 201);
+}
+
 export async function updateCustomer({ request, env, auth, params, ip }) {
   const current = await findCustomer(env, auth, params.id);
   const body = v.onlyFields(await readJson(request), [...FIELDS, 'active']);

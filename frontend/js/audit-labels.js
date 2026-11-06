@@ -62,6 +62,7 @@ const DESCRIBE = {
   RECURRING_UPDATED: (d) => [`Alterou a despesa recorrente ${d.description || ''}`.trim(), changes(d.before, d.after)],
   EXPENSE_AUTO_CREATED: (d) => [`Lançou automaticamente ${d.dates?.length ?? 1} despesa(s) recorrente(s): ${d.description || ''}`.trim(), formatCents(d.amount_cents)],
   CUSTOMER_CREATED: (d) => [`Cadastrou o cliente ${d.name}`],
+  CUSTOMERS_IMPORTED: (d) => [`Importou contatos do celular`, `${d.created ?? 0} novos · ${d.duplicates ?? 0} já cadastrados · ${d.invalid ?? 0} ignorados`],
   CUSTOMER_UPDATED: (d) => [`Alterou o cadastro do cliente ${d.name}`, d.contact_changed ? 'telefone alterado' : ''],
   CUSTOMER_CONTACTED: (d) => [`Abriu o WhatsApp para ${d.name}`, d.template ? `mensagem: ${d.template}` : 'mensagem livre'],
   TEMPLATE_CREATED: (d) => [`Criou a mensagem pronta ${d.title}`],

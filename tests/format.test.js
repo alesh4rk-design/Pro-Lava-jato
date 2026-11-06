@@ -298,3 +298,29 @@ test('agenda: rótulos de dia, soma de dias e mensagem de confirmação', () => 
   assert.equal(addDaysISO('2026-12-31', 1), '2027-01-01');
   assert.match(confirmationMessage({ name: 'Maria', service: 'Lavagem', date: '2026-11-07', time: '10:00', businessName: 'Brilho' }), /Maria.*Brilho.*Lavagem.*Sábado, 07\/11 às 10:00/);
 });
+
+import { cleanPhone, parseVcf, parseCsv, parseContacts, uniqueByPhone } from '../frontend/js/contatos-import.js';
+
+test('contatos: telefone limpo, com ou sem +55', () => {
+  assert.equal(cleanPhone('+55 (11) 98888-7777'), '11988887777');
+  assert.equal(cleanPhone('(11) 3888-7777'), '1138887777');
+  assert.equal(cleanPhone('98888-7777'), '');
+  assert.equal(cleanPhone('abc'), '');
+});
+
+test('contatos: lê vCard (.vcf) com nome composto, vários telefones e linhas dobradas', () => {
+  const vcf = [
+    'BEGIN:VCARD', 'VERSION:3.0', 'N:Silva;João;;;', 'FN:João da Silva', 'TEL;TYPE=CELL:+55 11 98888-7777', 'END:VCARD',
+    'BEGIN:VCARD', 'VERSION:3.0', 'N:Lima;Ana;;;', 'TEL;TYPE=HOME:123', 'item1.TEL:(21) 97777-1111', 'END:VCARD',
+    'BEGIN:VCARD', 'FN:Sem telefone', 'END:VCARD',
+  ].join('\r\n');
+  assert.deepEqual(parseVcf(vcf), [{ name: 'João da Silva', phone: '11988887777' }, { name: 'Ana Lima', phone: '21977771111' }]);
+});
+
+test('contatos: lê CSV do Google Contatos e de Excel (;)', () => {
+  const google = 'First Name,Last Name,Phone 1 - Label,Phone 1 - Value\nMaria,Souza,Mobile,"+55 11 97777-0000"\nSem,Fone,Mobile,\n';
+  assert.deepEqual(parseCsv(google), [{ name: 'Maria Souza', phone: '11977770000' }]);
+  assert.deepEqual(parseCsv('Nome;Telefone\nPedro;(31) 98888-1234\n'), [{ name: 'Pedro', phone: '31988881234' }]);
+  assert.deepEqual(parseContacts('x.csv', 'Nome;Celular\nLu;11999990000'), [{ name: 'Lu', phone: '11999990000' }]);
+  assert.equal(uniqueByPhone([{ name: 'A', phone: '1' }, { name: 'B', phone: '1' }]).length, 1);
+});

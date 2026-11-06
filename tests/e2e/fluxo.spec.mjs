@@ -801,12 +801,29 @@ test('agendamento online: dono liga o link, cliente agenda sem login, dono confi
   await owner.locator('#day-next').click();
   const days = owner.locator('#agenda-list');
   // o pedido pode estar em qualquer dia: procura nos próximos 14
-  for (let i = 0; i < 14 && !(await days.locator('.appt-card').count()); i += 1) await owner.locator('#day-next').click();
+  for (let i = 0; i < 14; i += 1) {
+    await owner.waitForLoadState('networkidle');
+    await days.locator('.day-title').waitFor();
+    if (await days.locator('.appt-card').count()) break;
+    await owner.locator('#day-next').click();
+  }
   const appt = days.locator('.appt-card', { hasText: 'Carla Mendes' });
   await expect(appt).toContainText('KJH9A87');
   expect(await noHorizontalScroll(owner), 'agenda').toBe(true);
   await appt.locator('button:has-text("Confirmar")').click();
   await expect(days.locator('.appt-card', { hasText: 'Carla Mendes' })).toContainText('Confirmado');
+});
+
+test('importar contatos do celular por arquivo .vcf', async () => {
+  await owner.goto('clientes.html');
+  await owner.click('#import-contacts');
+  const vcf = ['BEGIN:VCARD', 'VERSION:3.0', 'FN:Rita Contato Importado', 'TEL;TYPE=CELL:+55 11 94444-3333', 'END:VCARD', 'BEGIN:VCARD', 'FN:Sem Fone', 'END:VCARD'].join('\r\n');
+  await owner.setInputFiles('dialog[open] input[type=file]', { name: 'contatos.vcf', mimeType: 'text/vcard', buffer: Buffer.from(vcf) });
+  await expect(owner.locator('dialog[open]').last()).toContainText('Encontrei 1 contato');
+  expect(await noHorizontalScroll(owner), 'importação de contatos').toBe(true);
+  await owner.click('dialog[open] button:has-text("Importar 1")');
+  await expect(lastToast(owner)).toContainText('1 cliente(s) novo(s)');
+  await expect(owner.locator('.customer-card', { hasText: 'Rita Contato Importado' })).toHaveCount(1);
 });
 
 test('telas novas não rolam para o lado em 360px', async () => {

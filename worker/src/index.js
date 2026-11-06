@@ -48,6 +48,7 @@ const ROUTES = [
 
   ['GET', '/api/customers', TENANT, [], customers.listCustomers],
   ['POST', '/api/customers', TENANT, [], customers.createCustomer],
+  ['POST', '/api/customers/import', TENANT, [], customers.importCustomers],
   ['PUT', '/api/customers/:id', TENANT, [], customers.updateCustomer],
   ['POST', '/api/customers/:id/contact', TENANT, [], customers.registerContact],
   ['GET', '/api/message-templates', TENANT, [], customers.listTemplates],
